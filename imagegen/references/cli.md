@@ -76,12 +76,14 @@ Built-in OpenAI base URL precedence:
 3. the OpenAI SDK default
 
 ## Quick start (works from any repo)
-Set a stable path to the skill CLI (default `CODEX_HOME` is `~/.codex`):
+Resolve the installed skill directory—the directory containing `imagegen/SKILL.md`—instead of assuming an agent-specific installation path:
 
+```bash
+export IMAGEGEN_SKILL_DIR="<absolute path to the installed imagegen directory>"
+export IMAGE_GEN="$IMAGEGEN_SKILL_DIR/scripts/image_gen.py"
 ```
-export CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
-export IMAGE_GEN="$CODEX_HOME/skills/.system/imagegen/scripts/image_gen.py"
-```
+
+`IMAGEGEN_SKILL_DIR` locates the installed skill. `CODEX_HOME` remains independent and is used only to locate Codex `config.toml` and file-backed credentials; its default is `~/.codex`.
 
 Install dependencies into that environment with its package manager. In uv-managed environments, `uv pip install ...` remains the preferred path.
 
@@ -314,4 +316,4 @@ Notes:
 - API parameter quick reference for fallback CLI mode: `references/image-api.md`
 - Prompt examples shared across both top-level modes: `references/sample-prompts.md`
 - Network/sandbox notes for fallback CLI mode: `references/codex-network.md`
-- Built-in-first transparent image workflow: `SKILL.md` and `$CODEX_HOME/skills/.system/imagegen/scripts/remove_chroma_key.py`
+- Built-in-first transparent image workflow: `SKILL.md` and the skill-relative `scripts/remove_chroma_key.py`

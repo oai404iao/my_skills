@@ -6,7 +6,7 @@
 
 | Skill | 说明 |
 | --- | --- |
-| `imagegen` | 使用 Codex 内置图片工具或 OpenAI Images API 生成、编辑图片 |
+| `imagegen` | 使用宿主内置图片工具，或按 Codex Provider 配置调用 OpenAI-compatible Images API |
 
 ## 使用 `npx skills` 安装
 
@@ -58,6 +58,46 @@ npx skills add oai404iao/my_skills \
 
 去掉 `--global` 即安装到当前项目。
 
+## Skill 路径
+
+Skills CLI 会根据安装范围和目标 Agent 选择实际目录，因此本项目不硬编码 Codex 内置 Skill 的安装位置。
+
+文档中的以下路径都相对于已安装的 `imagegen` 目录，也就是包含 `SKILL.md` 的目录：
+
+```text
+scripts/image_gen.py
+scripts/remove_chroma_key.py
+references/*.md
+```
+
+执行脚本前，应先将该目录解析为绝对路径。例如：
+
+```bash
+export IMAGEGEN_SKILL_DIR="<包含 imagegen/SKILL.md 的目录>"
+python "$IMAGEGEN_SKILL_DIR/scripts/image_gen.py" --help
+```
+
+## Codex：屏蔽内置 `imagegen`
+
+Codex 自带一个同名的 bundled/system `imagegen`。安装本仓库版本后，为确保 Codex 使用本仓库中的 Skill，需要在用户的 `$CODEX_HOME/config.toml`（默认 `~/.codex/config.toml`）中按**绝对路径**禁用内置版本：
+
+```toml
+[[skills.config]]
+path = "/实际的/CODEX_HOME/skills/.system/imagegen/SKILL.md"
+enabled = false
+```
+
+请将 `path` 替换为本机内置 `imagegen/SKILL.md` 的真实绝对路径。
+
+> 不要按 Skill 名称禁用 `imagegen`，否则内置版本和本仓库版本可能会一起被禁用。
+
+如果希望禁用 Codex 的所有 bundled Skills，也可以使用：
+
+```toml
+[skills.bundled]
+enabled = false
+```
+
 ## 更新
 
 更新全局安装的 `imagegen`：
@@ -74,7 +114,7 @@ npx skills update imagegen --project
 
 ## `imagegen` 的 Provider 与认证
 
-正常的 Codex 图片生成优先使用内置 `image_gen` 工具。只有显式选择 CLI/API 模式时，才会调用：
+宿主提供 `image_gen` 工具时，普通图片生成优先使用该内置工具。只有显式选择 CLI/API 模式，或内置工具不可用且用户确认使用 fallback 时，才会调用：
 
 ```text
 imagegen/scripts/image_gen.py
