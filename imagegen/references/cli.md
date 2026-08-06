@@ -10,16 +10,49 @@ The word `batch` in a user request is not CLI opt-in by itself.
 - `edit`: edit one or more existing images
 - `generate-batch`: run many generation jobs from a JSONL file after the user explicitly chooses CLI/API/model controls
 
-Real API calls require **network access** plus OpenAI API-key credentials. `--dry-run` does not require credentials or network access.
+Real API calls require **network access** plus credentials accepted by the active Codex model provider. `--dry-run` does not require credentials or network access.
 
-## Authentication
+## Provider and authentication resolution
 
-The CLI creates an `AsyncOpenAI` client and resolves its API key in this order:
+The CLI reads `$CODEX_HOME/config.toml` (default `CODEX_HOME`: `~/.codex`), selects its top-level `model_provider`, and configures `AsyncOpenAI` from the matching provider.
+
+For custom `[model_providers.<id>]` entries, credential precedence matches Codex provider behavior:
+
+1. `env_key` — read the exact configured environment-variable name
+2. `experimental_bearer_token`
+3. `[model_providers.<id>.auth] command` stdout
+4. file-backed Codex API-key auth when `requires_openai_auth = true`
+5. `http_headers` / `env_http_headers`, or no bearer auth, when the provider does not require first-party auth
+
+The selected provider's `base_url`, `query_params`, `http_headers`, `env_http_headers`, and `request_max_retries` are also applied.
+
+Example:
+
+```toml
+model_provider = "corp-images"
+
+[model_providers.corp-images]
+name = "Corp Images"
+base_url = "https://images.example.com/v1"
+env_key = "CORP_IMAGES_API_KEY"
+query_params = { region = "us-east" }
+http_headers = { "X-Client" = "codex-imagegen" }
+env_http_headers = { "X-Tenant" = "CORP_TENANT_ID" }
+request_max_retries = 6
+```
+
+With this config, the CLI reads `CORP_IMAGES_API_KEY`; it does not silently use `OPENAI_API_KEY`.
+
+The provider must expose OpenAI-compatible Images API endpoints. A provider that only implements the Responses API is not sufficient. AWS/Bedrock authentication is not supported by this fallback.
+
+### Built-in OpenAI provider
+
+For `model_provider = "openai"` (or the default when unset), API-key precedence is:
 
 1. non-empty `OPENAI_API_KEY`
-2. file-backed Codex API-key credentials from `$CODEX_HOME/auth.json` (default `CODEX_HOME`: `~/.codex`)
+2. file-backed Codex API-key credentials from `$CODEX_HOME/auth.json`
 
-The Codex credentials must resolve to `auth_mode = "apikey"`. The CLI intentionally does not extract ChatGPT OAuth, access-token, Bedrock, keyring-only, or ephemeral credentials; those flows should use the built-in `image_gen` tool.
+The stored Codex credentials must resolve to `auth_mode = "apikey"`. The CLI intentionally does not extract ChatGPT OAuth, access-token, keyring-only, or ephemeral credentials; those flows should use the built-in `image_gen` tool.
 
 To persist an API key through Codex so future CLI calls do not require the environment variable:
 
@@ -36,7 +69,7 @@ printenv OPENAI_API_KEY | codex login --with-api-key
 
 After login, `scripts/image_gen.py` can read `$CODEX_HOME/auth.json` directly. It never prints the resolved key.
 
-Client base URL precedence:
+Built-in OpenAI base URL precedence:
 
 1. `OPENAI_BASE_URL`
 2. `openai_base_url` in `$CODEX_HOME/config.toml`
@@ -79,7 +112,7 @@ Notes:
 - One-off dry-runs print the API payload and the computed output path(s).
 - Repo-local finals should live under `output/imagegen/`.
 
-Generate (requires API-key credentials + network):
+Generate (requires provider credentials + network):
 
 ```bash
 python "$IMAGE_GEN" generate \

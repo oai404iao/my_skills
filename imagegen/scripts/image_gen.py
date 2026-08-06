@@ -17,6 +17,7 @@ import json
 import os
 from pathlib import Path
 import re
+import subprocess
 import sys
 import time
 from typing import Any, Dict, Iterable, List, Optional, Tuple
@@ -45,6 +46,8 @@ GPT_IMAGE_2_MAX_RATIO = 3.0
 
 MAX_IMAGE_BYTES = 50 * 1024 * 1024
 MAX_BATCH_JOBS = 500
+DEFAULT_PROVIDER_MAX_RETRIES = 4
+MAX_PROVIDER_MAX_RETRIES = 100
 
 
 class CredentialResolutionError(RuntimeError):
@@ -52,10 +55,14 @@ class CredentialResolutionError(RuntimeError):
 
 
 @dataclass(frozen=True)
-class OpenAIClientConfig:
-    api_key: str = field(repr=False)
+class ImageAPIClientConfig:
+    provider_id: str
     api_key_source: str
+    api_key: Optional[str] = field(default=None, repr=False)
     base_url: Optional[str] = None
+    default_headers: Dict[str, str] = field(default_factory=dict, repr=False)
+    default_query: Dict[str, str] = field(default_factory=dict, repr=False)
+    max_retries: int = DEFAULT_PROVIDER_MAX_RETRIES
 
 
 def _die(message: str, code: int = 1) -> None:
@@ -123,7 +130,7 @@ def _load_codex_config(codex_home: Path) -> Dict[str, Any]:
     try:
         with config_path.open("rb") as handle:
             parsed = tomllib.load(handle)
-    except Exception as exc:
+    except (OSError, ValueError) as exc:
         _warn(f"Could not parse Codex config {config_path}: {exc}")
         return {}
 
@@ -192,10 +199,10 @@ def _codex_auth_store_mode(config: Dict[str, Any]) -> str:
     return mode
 
 
-def _resolve_openai_client_config() -> OpenAIClientConfig:
-    codex_home = _find_codex_home()
-    codex_config = _load_codex_config(codex_home)
-
+def _resolve_codex_api_key(
+    codex_home: Path,
+    codex_config: Dict[str, Any],
+) -> Tuple[str, str]:
     api_key = _non_empty_env("OPENAI_API_KEY")
     api_key_source = "OPENAI_API_KEY"
 
@@ -233,16 +240,306 @@ def _resolve_openai_client_config() -> OpenAIClientConfig:
                 f"credentials at {auth_path} with `codex login --with-api-key`."
             )
 
-    base_url = _non_empty_env("OPENAI_BASE_URL")
-    if base_url is None:
-        configured_base_url = codex_config.get("openai_base_url")
-        if isinstance(configured_base_url, str) and configured_base_url.strip():
-            base_url = configured_base_url.strip()
+    return api_key, api_key_source
 
-    return OpenAIClientConfig(
+
+def _optional_string(value: Any, field_name: str) -> Optional[str]:
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise CredentialResolutionError(f"Codex config `{field_name}` must be a string.")
+    value = value.strip()
+    return value or None
+
+
+def _string_map(value: Any, field_name: str) -> Dict[str, str]:
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise CredentialResolutionError(f"Codex config `{field_name}` must be a table.")
+
+    parsed: Dict[str, str] = {}
+    for key, item in value.items():
+        if not isinstance(key, str) or not isinstance(item, str):
+            raise CredentialResolutionError(
+                f"Codex config `{field_name}` keys and values must be strings."
+            )
+        parsed[key] = item
+    return parsed
+
+
+def _configured_provider(
+    codex_config: Dict[str, Any],
+) -> Tuple[str, Dict[str, Any]]:
+    raw_provider_id = codex_config.get("model_provider", "openai")
+    if not isinstance(raw_provider_id, str) or not raw_provider_id.strip():
+        raise CredentialResolutionError("Codex config `model_provider` must be a non-empty string.")
+    provider_id = raw_provider_id.strip()
+
+    if provider_id == "openai":
+        return provider_id, {
+            "name": "OpenAI",
+            "base_url": codex_config.get("openai_base_url"),
+            "requires_openai_auth": True,
+            "env_http_headers": {
+                "OpenAI-Organization": "OPENAI_ORGANIZATION",
+                "OpenAI-Project": "OPENAI_PROJECT",
+            },
+        }
+
+    if provider_id in {"ollama", "lmstudio"}:
+        default_port = 11434 if provider_id == "ollama" else 1234
+        raw_port = _non_empty_env("CODEX_OSS_PORT")
+        try:
+            port = int(raw_port) if raw_port is not None else default_port
+        except ValueError as exc:
+            raise CredentialResolutionError(
+                f"CODEX_OSS_PORT must be an integer, got {raw_port!r}."
+            ) from exc
+        base_url = _non_empty_env("CODEX_OSS_BASE_URL") or f"http://localhost:{port}/v1"
+        return provider_id, {
+            "name": "gpt-oss",
+            "base_url": base_url,
+            "requires_openai_auth": False,
+        }
+
+    model_providers = codex_config.get("model_providers", {})
+    if not isinstance(model_providers, dict):
+        raise CredentialResolutionError("Codex config `model_providers` must be a table.")
+
+    configured = model_providers.get(provider_id)
+    if not isinstance(configured, dict):
+        if provider_id == "amazon-bedrock":
+            configured = {"name": "Amazon Bedrock", "aws": {}}
+        else:
+            raise CredentialResolutionError(
+                f"Codex model provider {provider_id!r} was not found in `model_providers`."
+            )
+    return provider_id, dict(configured)
+
+
+def _provider_headers(provider_id: str, provider: Dict[str, Any]) -> Dict[str, str]:
+    headers = _string_map(
+        provider.get("http_headers"),
+        f"model_providers.{provider_id}.http_headers",
+    )
+    env_headers = _string_map(
+        provider.get("env_http_headers"),
+        f"model_providers.{provider_id}.env_http_headers",
+    )
+    for header_name, env_name in env_headers.items():
+        env_value = _non_empty_env(env_name)
+        if env_value is not None:
+            headers[header_name] = env_value
+    return headers
+
+
+def _run_provider_auth_command(
+    provider_id: str,
+    auth: Dict[str, Any],
+    config_base_dir: Path,
+) -> str:
+    command = _optional_string(
+        auth.get("command"),
+        f"model_providers.{provider_id}.auth.command",
+    )
+    if command is None:
+        raise CredentialResolutionError(
+            f"Codex provider {provider_id!r} has an empty auth command."
+        )
+
+    raw_args = auth.get("args", [])
+    if not isinstance(raw_args, list) or not all(isinstance(arg, str) for arg in raw_args):
+        raise CredentialResolutionError(
+            f"Codex config `model_providers.{provider_id}.auth.args` must be a string array."
+        )
+
+    timeout_ms = auth.get("timeout_ms", 5_000)
+    if not isinstance(timeout_ms, int) or isinstance(timeout_ms, bool) or timeout_ms <= 0:
+        raise CredentialResolutionError(
+            f"Codex config `model_providers.{provider_id}.auth.timeout_ms` "
+            "must be a positive integer."
+        )
+
+    raw_cwd = auth.get("cwd", ".")
+    if not isinstance(raw_cwd, str):
+        raise CredentialResolutionError(
+            f"Codex config `model_providers.{provider_id}.auth.cwd` must be a string."
+        )
+    cwd = Path(raw_cwd).expanduser()
+    if not cwd.is_absolute():
+        cwd = config_base_dir / cwd
+    cwd = cwd.resolve()
+    if not cwd.is_dir():
+        raise CredentialResolutionError(
+            f"Codex provider {provider_id!r} auth cwd does not exist: {cwd}"
+        )
+
+    program_path = Path(command)
+    program = (
+        str(cwd / program_path)
+        if not program_path.is_absolute() and len(program_path.parts) > 1
+        else command
+    )
+
+    try:
+        result = subprocess.run(
+            [program, *raw_args],
+            cwd=cwd,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            timeout=timeout_ms / 1_000,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise CredentialResolutionError(
+            f"Provider auth command {command!r} timed out after {timeout_ms} ms."
+        ) from exc
+    except OSError as exc:
+        raise CredentialResolutionError(
+            f"Provider auth command {command!r} failed to start: {exc}"
+        ) from exc
+
+    stderr = result.stderr.decode("utf-8", errors="replace").strip()
+    if result.returncode != 0:
+        suffix = f": {stderr}" if stderr else ""
+        raise CredentialResolutionError(
+            f"Provider auth command {command!r} exited with status "
+            f"{result.returncode}{suffix}"
+        )
+    try:
+        token = result.stdout.decode("utf-8").strip()
+    except UnicodeDecodeError as exc:
+        raise CredentialResolutionError(
+            f"Provider auth command {command!r} wrote non-UTF-8 data to stdout."
+        ) from exc
+    if not token:
+        raise CredentialResolutionError(
+            f"Provider auth command {command!r} produced an empty token."
+        )
+    return token
+
+
+def _provider_bearer_token(
+    provider_id: str,
+    provider: Dict[str, Any],
+    codex_home: Path,
+    codex_config: Dict[str, Any],
+) -> Tuple[Optional[str], str]:
+    if provider_id == "amazon-bedrock" or provider.get("aws") is not None:
+        raise CredentialResolutionError(
+            f"Codex provider {provider_id!r} uses AWS authentication, which the "
+            "OpenAI-compatible Images API fallback does not support."
+        )
+
+    env_key = _optional_string(
+        provider.get("env_key"),
+        f"model_providers.{provider_id}.env_key",
+    )
+    bearer_token = _optional_string(
+        provider.get("experimental_bearer_token"),
+        f"model_providers.{provider_id}.experimental_bearer_token",
+    )
+    raw_auth = provider.get("auth")
+    if raw_auth is not None and not isinstance(raw_auth, dict):
+        raise CredentialResolutionError(
+            f"Codex config `model_providers.{provider_id}.auth` must be a table."
+        )
+    requires_openai_auth = provider.get("requires_openai_auth", False)
+    if not isinstance(requires_openai_auth, bool):
+        raise CredentialResolutionError(
+            f"Codex config `model_providers.{provider_id}.requires_openai_auth` "
+            "must be a boolean."
+        )
+
+    if raw_auth is not None and (
+        env_key is not None or bearer_token is not None or requires_openai_auth
+    ):
+        raise CredentialResolutionError(
+            f"Codex provider {provider_id!r} configures `auth` together with an "
+            "incompatible authentication field."
+        )
+
+    if env_key is not None:
+        api_key = _non_empty_env(env_key)
+        if api_key is None:
+            instructions = _optional_string(
+                provider.get("env_key_instructions"),
+                f"model_providers.{provider_id}.env_key_instructions",
+            )
+            suffix = f" {instructions}" if instructions else ""
+            raise CredentialResolutionError(
+                f"Codex provider {provider_id!r} requires environment variable "
+                f"{env_key}, but it is not set or is empty.{suffix}"
+            )
+        return api_key, f"provider environment variable {env_key}"
+
+    if bearer_token is not None:
+        return bearer_token, f"model_providers.{provider_id}.experimental_bearer_token"
+
+    if raw_auth is not None:
+        return (
+            _run_provider_auth_command(provider_id, raw_auth, codex_home),
+            f"model_providers.{provider_id}.auth.command",
+        )
+
+    if requires_openai_auth:
+        return _resolve_codex_api_key(codex_home, codex_config)
+
+    return None, "provider does not require bearer authentication"
+
+
+def _resolve_image_api_client_config() -> ImageAPIClientConfig:
+    codex_home = _find_codex_home()
+    codex_config = _load_codex_config(codex_home)
+    provider_id, provider = _configured_provider(codex_config)
+
+    api_key, api_key_source = _provider_bearer_token(
+        provider_id,
+        provider,
+        codex_home,
+        codex_config,
+    )
+
+    base_url = _optional_string(
+        provider.get("base_url"),
+        f"model_providers.{provider_id}.base_url",
+    )
+    if provider_id == "openai":
+        base_url = _non_empty_env("OPENAI_BASE_URL") or base_url
+
+    default_headers = _provider_headers(provider_id, provider)
+    if api_key is None:
+        api_key_source = (
+            "configured provider headers"
+            if default_headers
+            else "unauthenticated provider"
+        )
+    default_query = _string_map(
+        provider.get("query_params"),
+        f"model_providers.{provider_id}.query_params",
+    )
+
+    raw_max_retries = provider.get("request_max_retries", DEFAULT_PROVIDER_MAX_RETRIES)
+    if (
+        not isinstance(raw_max_retries, int)
+        or isinstance(raw_max_retries, bool)
+        or raw_max_retries < 0
+    ):
+        raise CredentialResolutionError(
+            f"Codex config `model_providers.{provider_id}.request_max_retries` "
+            "must be a non-negative integer."
+        )
+    max_retries = min(raw_max_retries, MAX_PROVIDER_MAX_RETRIES)
+
+    return ImageAPIClientConfig(
+        provider_id=provider_id,
         api_key=api_key,
         api_key_source=api_key_source,
         base_url=base_url,
+        default_headers=default_headers,
+        default_query=default_query,
+        max_retries=max_retries,
     )
 
 
@@ -580,18 +877,36 @@ def _create_async_client():
         )
 
     try:
-        client_config = _resolve_openai_client_config()
+        client_config = _resolve_image_api_client_config()
     except CredentialResolutionError as exc:
         _die(str(exc))
 
-    kwargs: Dict[str, Any] = {"api_key": client_config.api_key}
+    kwargs: Dict[str, Any] = {"max_retries": client_config.max_retries}
+    if client_config.api_key is None:
+        kwargs["api_key"] = ""
+        kwargs["_enforce_credentials"] = False
+    else:
+        kwargs["api_key"] = client_config.api_key
     if client_config.base_url is not None:
         kwargs["base_url"] = client_config.base_url
+    if client_config.default_headers:
+        kwargs["default_headers"] = client_config.default_headers
+    if client_config.default_query:
+        kwargs["default_query"] = client_config.default_query
 
-    print(f"Using API key from {client_config.api_key_source}.", file=sys.stderr)
+    print(f"Using Codex model provider {client_config.provider_id!r}.", file=sys.stderr)
+    print(f"Using auth from {client_config.api_key_source}.", file=sys.stderr)
     if client_config.base_url is not None:
-        print("Using configured OpenAI base URL.", file=sys.stderr)
-    return AsyncOpenAI(**kwargs)
+        print("Using configured provider base URL.", file=sys.stderr)
+    try:
+        return AsyncOpenAI(**kwargs)
+    except TypeError:
+        if client_config.api_key is None:
+            _die(
+                "This provider uses headers or no bearer token, but the installed openai "
+                f"SDK is too old for that mode. {_dependency_hint('openai', upgrade=True)}"
+            )
+        raise
 
 
 async def _close_async_client(client: Any) -> None:

@@ -12,7 +12,7 @@ Generates or edits images for the current project (for example website assets, g
 This skill has exactly two top-level modes:
 
 - **Default built-in tool mode (preferred):** built-in `image_gen` tool for normal image generation, editing, and simple transparent-image requests. Does not require `OPENAI_API_KEY`.
-- **Fallback CLI mode:** `scripts/image_gen.py` CLI. Use when the user explicitly asks for the CLI/API/model path, or after the user explicitly confirms a true model-native transparency fallback with `gpt-image-1.5`. Requires OpenAI API-key auth, resolved from `OPENAI_API_KEY` or file-backed Codex credentials.
+- **Fallback CLI mode:** `scripts/image_gen.py` CLI. Use when the user explicitly asks for the CLI/API/model path, or after the user explicitly confirms a true model-native transparency fallback with `gpt-image-1.5`. Uses the active Codex `model_provider` and resolves that provider's configured API credentials.
 
 Within CLI fallback, the CLI exposes three subcommands:
 
@@ -27,7 +27,7 @@ Rules:
 - Never silently switch from built-in `image_gen` or CLI `gpt-image-2` to CLI `gpt-image-1.5`. Treat this as a model/path downgrade and ask the user before doing it, unless the user has already explicitly requested `gpt-image-1.5`, `scripts/image_gen.py`, or CLI fallback.
 - If a transparent request appears too complex for clean chroma-key removal, asks for true/native transparency, or local removal fails validation, explain that true transparency requires CLI `gpt-image-1.5 --background transparent --output-format png` because `gpt-image-2` does not support `background=transparent`, then ask whether to proceed. Run the CLI fallback only after the user confirms.
 - The word `batch` by itself does not mean CLI fallback. If the user asks for many assets or says to batch-generate assets without explicitly asking for CLI/API/model controls, stay on the built-in path and issue one built-in call per requested asset or variant.
-- If the built-in tool fails or is unavailable, tell the user the CLI fallback exists and that it requires API-key credentials (`OPENAI_API_KEY` or `codex login --with-api-key` using file-backed storage). Proceed only if the user explicitly asks for that fallback.
+- If the built-in tool fails or is unavailable, tell the user the CLI fallback exists and that its selected Codex provider must expose an OpenAI-compatible Images API with usable credentials. Proceed only if the user explicitly asks for that fallback.
 - If the user explicitly asks for CLI mode, use the bundled `scripts/image_gen.py` workflow. Do not create one-off SDK runners.
 - Never modify `scripts/image_gen.py`. If something is missing, ask the user before doing anything else.
 
@@ -153,7 +153,7 @@ Do not automatically use CLI `gpt-image-1.5 --background transparent --output-fo
 Use a concise confirmation like:
 
 ```text
-This likely needs true native transparency. The default built-in path uses a chroma-key background plus local removal, but true transparency requires the CLI fallback with gpt-image-1.5 because gpt-image-2 does not support background=transparent. It also requires OpenAI API-key credentials. Should I proceed with that CLI fallback?
+This likely needs true native transparency. The default built-in path uses a chroma-key background plus local removal, but true transparency requires the CLI fallback with gpt-image-1.5 because gpt-image-2 does not support background=transparent. It also requires an Images-API-compatible Codex provider and credentials. Should I proceed with that CLI fallback?
 ```
 
 ## Prompt augmentation
@@ -335,18 +335,44 @@ Portability note:
 - In uv-managed environments, `uv pip install ...` remains the preferred path.
 
 ### Environment
-- Live CLI calls require OpenAI API-key auth. The script resolves credentials in this order:
-  1. non-empty `OPENAI_API_KEY`
-  2. `$CODEX_HOME/auth.json` (default home: `~/.codex`) when Codex uses `cli_auth_credentials_store = "file"` or a file fallback under `"auto"`
-- The stored credential must resolve to Codex `auth_mode = "apikey"`. OAuth, access-token, Bedrock, keyring-only, and ephemeral credentials are intentionally not extracted by the standalone CLI.
-- The async OpenAI client also honors `OPENAI_BASE_URL`, then Codex `openai_base_url` from `$CODEX_HOME/config.toml`.
+- Live CLI calls load `$CODEX_HOME/config.toml` (default home: `~/.codex`) and select `model_provider` exactly from that config.
+- For a custom `[model_providers.<id>]`, the script resolves provider auth in Codex order:
+  1. the provider's `env_key` environment variable
+  2. `experimental_bearer_token`
+  3. the stdout of `[model_providers.<id>.auth] command`
+  4. file-backed Codex API-key credentials only when `requires_openai_auth = true`
+  5. configured `http_headers` / `env_http_headers`, or no bearer auth, for compatible providers that do not require first-party auth
+- It also applies the selected provider's `base_url`, `query_params`, `http_headers`, `env_http_headers`, and `request_max_retries`.
+- For the built-in `openai` provider, credentials resolve from non-empty `OPENAI_API_KEY`, then `$CODEX_HOME/auth.json`; `OPENAI_BASE_URL` overrides top-level Codex `openai_base_url`.
+- File-backed Codex credentials must resolve to `auth_mode = "apikey"`. OAuth, access-token, keyring-only, and ephemeral credentials are intentionally not extracted by the standalone CLI.
+- AWS/Bedrock authentication is not supported by this OpenAI-compatible CLI fallback.
+- A configured Codex provider is usable here only if it implements OpenAI-compatible Images API endpoints; Responses API compatibility alone is not enough.
 - Do not ask the user for `OPENAI_API_KEY` when using the built-in `image_gen` tool.
-- Never ask the user to paste the full key in chat. Ask them to set it locally and confirm when ready.
+- Never ask the user to paste any provider key in chat. Ask them to set the provider's configured `env_key` locally and confirm when ready.
 
-If the key is missing, offer either environment-based auth or persisted Codex API-key auth:
-1. Create an API key in the OpenAI platform UI: https://platform.openai.com/api-keys
-2. Either set `OPENAI_API_KEY`, or set `cli_auth_credentials_store = "file"` in `$CODEX_HOME/config.toml` and pipe the key once to `codex login --with-api-key`.
-3. After file-backed Codex login, the CLI can reuse `$CODEX_HOME/auth.json` without requiring the environment variable on every invocation.
+If credentials are missing:
+1. Read `model_provider` and its `[model_providers.<id>]` entry.
+2. If it defines `env_key`, ask the user to set that exact variable and follow `env_key_instructions` when present.
+3. If it uses the built-in OpenAI auth path, offer either environment-based auth or persisted Codex API-key auth:
+   - Create an API key in the OpenAI platform UI: https://platform.openai.com/api-keys
+   - Either set `OPENAI_API_KEY`, or set `cli_auth_credentials_store = "file"` in `$CODEX_HOME/config.toml` and pipe the key once to `codex login --with-api-key`.
+   - After file-backed Codex login, the CLI can reuse `$CODEX_HOME/auth.json` without requiring the environment variable on every invocation.
+
+Example custom provider:
+
+```toml
+model_provider = "corp-images"
+
+[model_providers.corp-images]
+name = "Corp Images"
+base_url = "https://images.example.com/v1"
+env_key = "CORP_IMAGES_API_KEY"
+query_params = { region = "us-east" }
+http_headers = { "X-Client" = "codex-imagegen" }
+env_http_headers = { "X-Tenant" = "CORP_TENANT_ID" }
+```
+
+Do not silently fall back from the selected custom provider to OpenAI credentials when its `env_key` is missing.
 
 If installation is not possible in this environment, tell the user which dependency is missing and how to install it into their active environment.
 

@@ -72,7 +72,7 @@ npx skills update imagegen --global
 npx skills update imagegen --project
 ```
 
-## `imagegen` 的 API Key 认证
+## `imagegen` 的 Provider 与认证
 
 正常的 Codex 图片生成优先使用内置 `image_gen` 工具。只有显式选择 CLI/API 模式时，才会调用：
 
@@ -80,13 +80,62 @@ npx skills update imagegen --project
 imagegen/scripts/image_gen.py
 ```
 
-CLI 使用 `AsyncOpenAI`，按以下顺序读取 API Key：
+CLI 使用 `AsyncOpenAI`，首先读取 `$CODEX_HOME/config.toml` 中的：
+
+- `model_provider`
+- `[model_providers.<id>]`
+- `base_url`
+- `env_key`
+- `env_key_instructions`
+- `experimental_bearer_token`
+- `[model_providers.<id>.auth]`
+- `query_params`
+- `http_headers`
+- `env_http_headers`
+- `request_max_retries`
+
+自定义 Provider 的认证优先级：
+
+1. `env_key` 指定的动态环境变量
+2. `experimental_bearer_token`
+3. Provider `auth.command` 的标准输出
+4. `requires_openai_auth = true` 时读取 Codex API Key 文件凭证
+5. Provider 自定义请求头或无 Bearer Token 模式
+
+例如：
+
+```toml
+model_provider = "corp-images"
+
+[model_providers.corp-images]
+name = "Corp Images"
+base_url = "https://images.example.com/v1"
+env_key = "CORP_IMAGES_API_KEY"
+query_params = { region = "us-east" }
+http_headers = { "X-Client" = "codex-imagegen" }
+env_http_headers = { "X-Tenant" = "CORP_TENANT_ID" }
+request_max_retries = 6
+```
+
+此时脚本读取的是：
+
+```bash
+CORP_IMAGES_API_KEY
+```
+
+不会错误回退到 `OPENAI_API_KEY`。
+
+> Provider 必须实现 OpenAI-compatible Images API。只兼容 Responses API 并不代表能够生成图片。AWS/Bedrock 认证不受该 CLI fallback 支持。
+
+### 内置 OpenAI Provider
+
+当 `model_provider = "openai"` 或未配置 Provider 时，API Key 顺序为：
 
 1. `OPENAI_API_KEY`
 2. Codex 文件凭证：`$CODEX_HOME/auth.json`
 3. 未设置 `CODEX_HOME` 时使用 `~/.codex/auth.json`
 
-Codex 凭证必须是 API Key 模式。OAuth 凭证继续由 Codex 内置工具处理，不会被此脚本读取。
+Codex 文件凭证必须是 API Key 模式。OAuth 凭证继续由 Codex 内置工具处理，不会被此脚本读取。
 
 如需让 Codex 持久化 API Key，在 `$CODEX_HOME/config.toml` 中设置：
 
@@ -102,7 +151,7 @@ printenv OPENAI_API_KEY | codex login --with-api-key
 
 之后运行 CLI 时可以不再保留 `OPENAI_API_KEY` 环境变量，脚本会读取 Codex 的 `auth.json`。
 
-OpenAI Base URL 的读取顺序：
+内置 OpenAI Provider 的 Base URL 读取顺序：
 
 1. `OPENAI_BASE_URL`
 2. `$CODEX_HOME/config.toml` 中的 `openai_base_url`
