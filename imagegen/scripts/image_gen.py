@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import base64
+from dataclasses import dataclass, field
 import json
 import os
 from pathlib import Path
@@ -46,6 +47,17 @@ MAX_IMAGE_BYTES = 50 * 1024 * 1024
 MAX_BATCH_JOBS = 500
 
 
+class CredentialResolutionError(RuntimeError):
+    """Raised when API-key credentials cannot be resolved safely."""
+
+
+@dataclass(frozen=True)
+class OpenAIClientConfig:
+    api_key: str = field(repr=False)
+    api_key_source: str
+    base_url: Optional[str] = None
+
+
 def _die(message: str, code: int = 1) -> None:
     print(f"Error: {message}", file=sys.stderr)
     raise SystemExit(code)
@@ -66,14 +78,172 @@ def _dependency_hint(package: str, *, upgrade: bool = False) -> str:
     )
 
 
-def _ensure_api_key(dry_run: bool) -> None:
-    if os.getenv("OPENAI_API_KEY"):
-        print("OPENAI_API_KEY is set.", file=sys.stderr)
-        return
-    if dry_run:
-        _warn("OPENAI_API_KEY is not set; dry-run only.")
-        return
-    _die("OPENAI_API_KEY is not set. Export it before running.")
+def _non_empty_env(name: str) -> Optional[str]:
+    value = os.getenv(name)
+    if value is None:
+        return None
+    value = value.strip()
+    return value or None
+
+
+def _find_codex_home() -> Path:
+    configured = _non_empty_env("CODEX_HOME")
+    if configured is None:
+        return Path.home() / ".codex"
+
+    path = Path(configured).expanduser()
+    if not path.exists():
+        raise CredentialResolutionError(
+            f"CODEX_HOME points to {path}, but that path does not exist."
+        )
+    if not path.is_dir():
+        raise CredentialResolutionError(
+            f"CODEX_HOME points to {path}, but that path is not a directory."
+        )
+    return path.resolve()
+
+
+def _load_codex_config(codex_home: Path) -> Dict[str, Any]:
+    config_path = codex_home / "config.toml"
+    if not config_path.exists():
+        return {}
+
+    try:
+        import tomllib
+    except ImportError:
+        try:
+            import tomli as tomllib  # type: ignore[no-redef]
+        except ImportError:
+            _warn(
+                f"Could not parse {config_path}: Python 3.11+ or the `tomli` package "
+                "is required. Continuing with Codex defaults."
+            )
+            return {}
+
+    try:
+        with config_path.open("rb") as handle:
+            parsed = tomllib.load(handle)
+    except Exception as exc:
+        _warn(f"Could not parse Codex config {config_path}: {exc}")
+        return {}
+
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _resolved_codex_auth_mode(auth: Dict[str, Any]) -> str:
+    # Keep this precedence aligned with Codex's AuthDotJson::resolved_mode.
+    explicit_mode = auth.get("auth_mode")
+    if isinstance(explicit_mode, str) and explicit_mode.strip():
+        return explicit_mode.strip().lower()
+    if auth.get("personal_access_token") is not None:
+        return "personalaccesstoken"
+    if auth.get("bedrock_api_key") is not None:
+        return "bedrockapikey"
+    if auth.get("OPENAI_API_KEY") is not None:
+        return "apikey"
+    return "chatgpt"
+
+
+def _read_codex_api_key(auth_path: Path) -> Optional[str]:
+    if not auth_path.exists():
+        return None
+
+    try:
+        auth = json.loads(auth_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise CredentialResolutionError(
+            f"Could not read Codex credentials at {auth_path}: {exc}"
+        ) from exc
+
+    if not isinstance(auth, dict):
+        raise CredentialResolutionError(
+            f"Codex credentials at {auth_path} must contain a JSON object."
+        )
+
+    auth_mode = _resolved_codex_auth_mode(auth)
+    if auth_mode != "apikey":
+        raise CredentialResolutionError(
+            f"Codex credentials use auth mode {auth_mode!r}, not API-key auth. "
+            "OAuth and other Codex credentials are intentionally not consumed by this "
+            "fallback CLI; use the built-in image_gen tool or log in with an API key."
+        )
+
+    api_key = auth.get("OPENAI_API_KEY")
+    if not isinstance(api_key, str) or not api_key.strip():
+        raise CredentialResolutionError(
+            f"Codex API-key credentials at {auth_path} do not contain a non-empty "
+            "OPENAI_API_KEY."
+        )
+    return api_key.strip()
+
+
+def _codex_auth_store_mode(config: Dict[str, Any]) -> str:
+    raw_mode = config.get("cli_auth_credentials_store", "file")
+    if not isinstance(raw_mode, str):
+        raise CredentialResolutionError(
+            "Codex config `cli_auth_credentials_store` must be a string."
+        )
+
+    mode = raw_mode.strip().lower()
+    if mode not in {"file", "keyring", "auto", "ephemeral"}:
+        raise CredentialResolutionError(
+            f"Unsupported Codex credential store mode: {raw_mode!r}."
+        )
+    return mode
+
+
+def _resolve_openai_client_config() -> OpenAIClientConfig:
+    codex_home = _find_codex_home()
+    codex_config = _load_codex_config(codex_home)
+
+    api_key = _non_empty_env("OPENAI_API_KEY")
+    api_key_source = "OPENAI_API_KEY"
+
+    if api_key is None:
+        store_mode = _codex_auth_store_mode(codex_config)
+        auth_path = codex_home / "auth.json"
+
+        if store_mode in {"file", "auto"}:
+            api_key = _read_codex_api_key(auth_path)
+            if api_key is not None:
+                api_key_source = f"Codex API-key credentials ({auth_path})"
+
+        if api_key is None and store_mode == "keyring":
+            raise CredentialResolutionError(
+                "Codex is configured to store credentials in the OS keyring. This standalone "
+                "CLI does not extract keyring or OAuth credentials. Set OPENAI_API_KEY, or use "
+                "`cli_auth_credentials_store = \"file\"` and run `codex login --with-api-key`."
+            )
+        if api_key is None and store_mode == "ephemeral":
+            raise CredentialResolutionError(
+                "Codex credentials are process-local (`cli_auth_credentials_store = "
+                "\"ephemeral\"`) and cannot be read by this standalone CLI. Set "
+                "OPENAI_API_KEY or persist API-key credentials in file mode."
+            )
+        if api_key is None and store_mode == "auto":
+            raise CredentialResolutionError(
+                f"No file-backed Codex API-key credentials were found at {auth_path}. "
+                "Auto mode may have stored credentials in the OS keyring, which this "
+                "standalone CLI does not extract. Set OPENAI_API_KEY, or switch Codex to "
+                "file-backed API-key credentials."
+            )
+        if api_key is None:
+            raise CredentialResolutionError(
+                f"No OpenAI API key was found. Set OPENAI_API_KEY, or persist API-key "
+                f"credentials at {auth_path} with `codex login --with-api-key`."
+            )
+
+    base_url = _non_empty_env("OPENAI_BASE_URL")
+    if base_url is None:
+        configured_base_url = codex_config.get("openai_base_url")
+        if isinstance(configured_base_url, str) and configured_base_url.strip():
+            base_url = configured_base_url.strip()
+
+    return OpenAIClientConfig(
+        api_key=api_key,
+        api_key_source=api_key_source,
+        base_url=base_url,
+    )
 
 
 def _read_prompt(prompt: Optional[str], prompt_file: Optional[str]) -> str:
@@ -394,14 +564,6 @@ def _decode_write_and_downscale(
         print(f"Wrote {derived}")
 
 
-def _create_client():
-    try:
-        from openai import OpenAI
-    except ImportError:
-        _die(f"openai SDK not installed in the active environment. {_dependency_hint('openai')}")
-    return OpenAI()
-
-
 def _create_async_client():
     try:
         from openai import AsyncOpenAI
@@ -416,7 +578,29 @@ def _create_async_client():
             "AsyncOpenAI not available in this openai SDK version. "
             f"{_dependency_hint('openai', upgrade=True)}"
         )
-    return AsyncOpenAI()
+
+    try:
+        client_config = _resolve_openai_client_config()
+    except CredentialResolutionError as exc:
+        _die(str(exc))
+
+    kwargs: Dict[str, Any] = {"api_key": client_config.api_key}
+    if client_config.base_url is not None:
+        kwargs["base_url"] = client_config.base_url
+
+    print(f"Using API key from {client_config.api_key_source}.", file=sys.stderr)
+    if client_config.base_url is not None:
+        print("Using configured OpenAI base URL.", file=sys.stderr)
+    return AsyncOpenAI(**kwargs)
+
+
+async def _close_async_client(client: Any) -> None:
+    close = getattr(client, "close", None)
+    if close is None:
+        return
+    result = close()
+    if asyncio.iscoroutine(result):
+        await result
 
 
 def _slugify(value: str) -> str:
@@ -628,86 +812,82 @@ async def _run_generate_batch(args: argparse.Namespace) -> int:
         return 0
 
     client = _create_async_client()
-    sem = asyncio.Semaphore(args.concurrency)
-
-    any_failed = False
-
-    async def run_job(i: int, job: Dict[str, Any]) -> Tuple[int, Optional[str]]:
-        nonlocal any_failed
-        prompt = str(job["prompt"]).strip()
-        job_label = f"[job {i}/{len(jobs)}]"
-
-        fields = _merge_non_null(base_fields, job.get("fields", {}))
-        fields = _merge_non_null(fields, {k: job.get(k) for k in base_fields.keys()})
-        augmented = _augment_prompt_fields(args.augment, prompt, fields)
-
-        payload = dict(base_payload)
-        payload["prompt"] = augmented
-        payload = _merge_non_null(payload, {k: job.get(k) for k in base_payload.keys()})
-        payload = {k: v for k, v in payload.items() if v is not None}
-
-        n = int(payload.get("n", 1))
-        _validate_generate_payload(payload)
-        effective_output_format = _normalize_output_format(payload.get("output_format"))
-        _validate_transparency(payload.get("background"), effective_output_format)
-        payload["output_format"] = effective_output_format
-        outputs = _job_output_paths(
-            out_dir=out_dir,
-            output_format=effective_output_format,
-            idx=i,
-            prompt=prompt,
-            n=n,
-            explicit_out=job.get("out"),
-        )
-        try:
-            async with sem:
-                print(f"{job_label} starting", file=sys.stderr)
-                started = time.time()
-                result = await _generate_one_with_retries(
-                    client,
-                    payload,
-                    attempts=args.max_attempts,
-                    job_label=job_label,
-                )
-                elapsed = time.time() - started
-                print(f"{job_label} completed in {elapsed:.1f}s", file=sys.stderr)
-            images = [item.b64_json for item in result.data]
-            _decode_write_and_downscale(
-                images,
-                outputs,
-                force=args.force,
-                downscale_max_dim=args.downscale_max_dim,
-                downscale_suffix=args.downscale_suffix,
-                output_format=effective_output_format,
-            )
-            return i, None
-        except Exception as exc:
-            any_failed = True
-            print(f"{job_label} failed: {exc}", file=sys.stderr)
-            if args.fail_fast:
-                raise
-            return i, str(exc)
-
-    tasks = [asyncio.create_task(run_job(i, job)) for i, job in enumerate(jobs, start=1)]
-
     try:
-        await asyncio.gather(*tasks)
-    except Exception:
-        for t in tasks:
-            if not t.done():
-                t.cancel()
-        raise
+        sem = asyncio.Semaphore(args.concurrency)
+        any_failed = False
 
-    return 1 if any_failed else 0
+        async def run_job(i: int, job: Dict[str, Any]) -> Tuple[int, Optional[str]]:
+            nonlocal any_failed
+            prompt = str(job["prompt"]).strip()
+            job_label = f"[job {i}/{len(jobs)}]"
+
+            fields = _merge_non_null(base_fields, job.get("fields", {}))
+            fields = _merge_non_null(fields, {k: job.get(k) for k in base_fields.keys()})
+            augmented = _augment_prompt_fields(args.augment, prompt, fields)
+
+            payload = dict(base_payload)
+            payload["prompt"] = augmented
+            payload = _merge_non_null(payload, {k: job.get(k) for k in base_payload.keys()})
+            payload = {k: v for k, v in payload.items() if v is not None}
+
+            n = int(payload.get("n", 1))
+            _validate_generate_payload(payload)
+            effective_output_format = _normalize_output_format(payload.get("output_format"))
+            _validate_transparency(payload.get("background"), effective_output_format)
+            payload["output_format"] = effective_output_format
+            outputs = _job_output_paths(
+                out_dir=out_dir,
+                output_format=effective_output_format,
+                idx=i,
+                prompt=prompt,
+                n=n,
+                explicit_out=job.get("out"),
+            )
+            try:
+                async with sem:
+                    print(f"{job_label} starting", file=sys.stderr)
+                    started = time.time()
+                    result = await _generate_one_with_retries(
+                        client,
+                        payload,
+                        attempts=args.max_attempts,
+                        job_label=job_label,
+                    )
+                    elapsed = time.time() - started
+                    print(f"{job_label} completed in {elapsed:.1f}s", file=sys.stderr)
+                images = [item.b64_json for item in result.data]
+                _decode_write_and_downscale(
+                    images,
+                    outputs,
+                    force=args.force,
+                    downscale_max_dim=args.downscale_max_dim,
+                    downscale_suffix=args.downscale_suffix,
+                    output_format=effective_output_format,
+                )
+                return i, None
+            except Exception as exc:
+                any_failed = True
+                print(f"{job_label} failed: {exc}", file=sys.stderr)
+                if args.fail_fast:
+                    raise
+                return i, str(exc)
+
+        tasks = [asyncio.create_task(run_job(i, job)) for i, job in enumerate(jobs, start=1)]
+
+        try:
+            await asyncio.gather(*tasks)
+        except Exception:
+            for task in tasks:
+                if not task.done():
+                    task.cancel()
+            raise
+
+        return 1 if any_failed else 0
+    finally:
+        await _close_async_client(client)
 
 
-def _generate_batch(args: argparse.Namespace) -> None:
-    exit_code = asyncio.run(_run_generate_batch(args))
-    if exit_code:
-        raise SystemExit(exit_code)
-
-
-def _generate(args: argparse.Namespace) -> None:
+async def _generate(args: argparse.Namespace) -> int:
     prompt = _read_prompt(args.prompt, args.prompt_file)
     prompt = _augment_prompt(args, prompt)
 
@@ -741,15 +921,18 @@ def _generate(args: argparse.Namespace) -> None:
                 **payload,
             }
         )
-        return
+        return 0
 
     print(
         "Calling Image API (generation). This can take up to a couple of minutes.",
         file=sys.stderr,
     )
     started = time.time()
-    client = _create_client()
-    result = client.images.generate(**payload)
+    client = _create_async_client()
+    try:
+        result = await client.images.generate(**payload)
+    finally:
+        await _close_async_client(client)
     elapsed = time.time() - started
     print(f"Generation completed in {elapsed:.1f}s.", file=sys.stderr)
 
@@ -762,9 +945,10 @@ def _generate(args: argparse.Namespace) -> None:
         downscale_suffix=args.downscale_suffix,
         output_format=output_format,
     )
+    return 0
 
 
-def _edit(args: argparse.Namespace) -> None:
+async def _edit(args: argparse.Namespace) -> int:
     prompt = _read_prompt(args.prompt, args.prompt_file)
     prompt = _augment_prompt(args, prompt)
 
@@ -814,21 +998,23 @@ def _edit(args: argparse.Namespace) -> None:
                 **payload_preview,
             }
         )
-        return
+        return 0
 
     print(
         f"Calling Image API (edit) with {len(image_paths)} image(s).",
         file=sys.stderr,
     )
     started = time.time()
-    client = _create_client()
-
-    with _open_files(image_paths) as image_files, _open_mask(mask_path) as mask_file:
-        request = dict(payload)
-        request["image"] = image_files if len(image_files) > 1 else image_files[0]
-        if mask_file is not None:
-            request["mask"] = mask_file
-        result = client.images.edit(**request)
+    client = _create_async_client()
+    try:
+        with _open_files(image_paths) as image_files, _open_mask(mask_path) as mask_file:
+            request = dict(payload)
+            request["image"] = image_files if len(image_files) > 1 else image_files[0]
+            if mask_file is not None:
+                request["mask"] = mask_file
+            result = await client.images.edit(**request)
+    finally:
+        await _close_async_client(client)
 
     elapsed = time.time() - started
     print(f"Edit completed in {elapsed:.1f}s.", file=sys.stderr)
@@ -841,6 +1027,7 @@ def _edit(args: argparse.Namespace) -> None:
         downscale_suffix=args.downscale_suffix,
         output_format=output_format,
     )
+    return 0
 
 
 def _open_files(paths: List[Path]):
@@ -953,7 +1140,7 @@ def main() -> int:
     batch_parser.add_argument("--concurrency", type=int, default=DEFAULT_CONCURRENCY)
     batch_parser.add_argument("--max-attempts", type=int, default=3)
     batch_parser.add_argument("--fail-fast", action="store_true")
-    batch_parser.set_defaults(func=_generate_batch)
+    batch_parser.set_defaults(func=_run_generate_batch)
 
     edit_parser = subparsers.add_parser("edit", help="Edit an existing image")
     _add_shared_args(edit_parser)
@@ -985,10 +1172,7 @@ def main() -> int:
         background=args.background,
         input_fidelity=getattr(args, "input_fidelity", None),
     )
-    _ensure_api_key(args.dry_run)
-
-    args.func(args)
-    return 0
+    return asyncio.run(args.func(args))
 
 
 if __name__ == "__main__":

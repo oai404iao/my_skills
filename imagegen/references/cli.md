@@ -10,7 +10,37 @@ The word `batch` in a user request is not CLI opt-in by itself.
 - `edit`: edit one or more existing images
 - `generate-batch`: run many generation jobs from a JSONL file after the user explicitly chooses CLI/API/model controls
 
-Real API calls require **network access** + `OPENAI_API_KEY`. `--dry-run` does not.
+Real API calls require **network access** plus OpenAI API-key credentials. `--dry-run` does not require credentials or network access.
+
+## Authentication
+
+The CLI creates an `AsyncOpenAI` client and resolves its API key in this order:
+
+1. non-empty `OPENAI_API_KEY`
+2. file-backed Codex API-key credentials from `$CODEX_HOME/auth.json` (default `CODEX_HOME`: `~/.codex`)
+
+The Codex credentials must resolve to `auth_mode = "apikey"`. The CLI intentionally does not extract ChatGPT OAuth, access-token, Bedrock, keyring-only, or ephemeral credentials; those flows should use the built-in `image_gen` tool.
+
+To persist an API key through Codex so future CLI calls do not require the environment variable:
+
+```toml
+# $CODEX_HOME/config.toml (default: ~/.codex/config.toml)
+cli_auth_credentials_store = "file"
+```
+
+Then import the key once:
+
+```bash
+printenv OPENAI_API_KEY | codex login --with-api-key
+```
+
+After login, `scripts/image_gen.py` can read `$CODEX_HOME/auth.json` directly. It never prints the resolved key.
+
+Client base URL precedence:
+
+1. `OPENAI_BASE_URL`
+2. `openai_base_url` in `$CODEX_HOME/config.toml`
+3. the OpenAI SDK default
 
 ## Quick start (works from any repo)
 Set a stable path to the skill CLI (default `CODEX_HOME` is `~/.codex`):
@@ -21,6 +51,18 @@ export IMAGE_GEN="$CODEX_HOME/skills/.system/imagegen/scripts/image_gen.py"
 ```
 
 Install dependencies into that environment with its package manager. In uv-managed environments, `uv pip install ...` remains the preferred path.
+
+Required for live API calls:
+
+```bash
+uv pip install openai
+```
+
+For Python versions older than 3.11, also install `tomli` to load Codex `config.toml`:
+
+```bash
+uv pip install tomli
+```
 
 ## Quick start
 
@@ -37,7 +79,7 @@ Notes:
 - One-off dry-runs print the API payload and the computed output path(s).
 - Repo-local finals should live under `output/imagegen/`.
 
-Generate (requires `OPENAI_API_KEY` + network):
+Generate (requires API-key credentials + network):
 
 ```bash
 python "$IMAGE_GEN" generate \
