@@ -98,6 +98,91 @@ enabled = false
 enabled = false
 ```
 
+## Codex：开启 `web.run`
+
+`web.run` 是 Codex Web Search extension 提供的 standalone 工具。是否暴露该工具，取决于模型是否使用 Responses Lite、Provider 能力、搜索模式、feature 配置以及 extension 是否成功注册。
+
+下面的示例使用：
+
+```toml
+web_search = "live"
+```
+
+这样会明确请求实时外网搜索。未配置 `web_search` 时默认是 `cached`；工具仍可能出现，但 `external_web_access = false`。
+
+### GPT-5.5：普通 Responses，非 Lite
+
+GPT-5.5 默认使用 hosted `web_search`。要让 standalone `web.run` 优先替代 hosted 工具，需要开启 `standalone_web_search` feature：
+
+```toml
+model = "gpt-5.5"
+model_provider = "openai"
+web_search = "live"
+
+[features]
+standalone_web_search = true
+```
+
+如果已有 `[features]` 表，只需把 `standalone_web_search = true` 合并进去，不要重复声明 TOML 表。
+
+此模式下：
+
+- `web.run` 成功注册时，Codex 不再向模型发送 hosted `type: web_search`
+- `web.run` 未安装、注册失败或发生工具名冲突时，会回退到 hosted `web_search`
+- `standalone_web_search` 当前属于开发中 feature，GPT-5.5 必须显式开启
+
+### GPT-5.6 系列：Responses Lite
+
+当前 Codex 模型目录中的 `gpt-5.6-sol`、`gpt-5.6-terra` 和 `gpt-5.6-luna` 都使用 Responses Lite。Lite 模型本身已经满足 standalone 搜索条件，因此使用 OpenAI Provider 时不需要开启 `standalone_web_search` feature：
+
+```toml
+model = "gpt-5.6-sol" # 也可以是 gpt-5.6-terra 或 gpt-5.6-luna
+model_provider = "openai"
+web_search = "live"
+```
+
+Responses Lite 永远不会发送 hosted `type: web_search`。因此：
+
+- Web Search extension 正常注册时，只暴露 `web.run`
+- `web.run` 没有成功注册时，不会回退到 hosted 搜索，而是没有任何搜索工具
+
+Codex App Server 默认安装 Web Search extension。其他自定义宿主需要确保该 extension 已安装。
+
+### 自定义 Provider
+
+普通自定义 Provider 默认没有 standalone 搜索资格。除非使用非空的 `x-openai-actor-authorization`，否则需要在 Provider 配置中显式开启：
+
+```toml
+model_provider = "corp"
+web_search = "live"
+
+[model_providers.corp]
+name = "Corp"
+base_url = "https://responses.example.com/v1"
+env_key = "CORP_API_KEY"
+supports_standalone_web_search = true
+```
+
+`supports_standalone_web_search = true` 只是声明 Provider 具备该能力；对应后端仍需真正实现 standalone Web Search endpoint。
+
+另外：
+
+- GPT-5.5 / 非 Lite 模型仍需 `[features] standalone_web_search = true`
+- GPT-5.6 / Responses Lite 模型不需要该 feature
+- Amazon Bedrock 不支持 standalone `web.run`；Responses Lite 下也没有 hosted 搜索可回退
+- `web_search = "disabled"`、Guardian 或 Review 会话不会暴露搜索工具
+
+搜索模式：
+
+| `web_search` | 行为 |
+| --- | --- |
+| `"live"` | 允许实时外网访问 |
+| `"indexed"` | 允许外网访问并启用 indexed 模式 |
+| `"cached"` | 使用缓存结果，不允许实时外网访问 |
+| `"disabled"` | 不暴露任何搜索工具 |
+
+> “开启”表示把 `web.run` 暴露给模型；最终是否调用仍由模型在 `tool_choice: auto` 下决定。
+
 ## 更新
 
 更新全局安装的 `imagegen`：
