@@ -6,6 +6,7 @@
 
 | Skill | 说明 |
 | --- | --- |
+| `agents-md` | 创建、更新、审查和重构面向 AI 编码 Agent 的 `AGENTS.md` |
 | `imagegen` | 使用宿主内置图片工具，或按 Codex Provider 配置调用 OpenAI-compatible Images API |
 
 ## 使用 `npx skills` 安装
@@ -24,10 +25,14 @@ npx skills add oai404iao/my_skills --list
 npx skills add oai404iao/my_skills
 ```
 
-### 只安装 `imagegen`
+### 只安装指定 Skill
 
 ```bash
 npx skills add oai404iao/my_skills --skill imagegen
+```
+
+```bash
+npx skills add oai404iao/my_skills --skill agents-md
 ```
 
 也可以使用完整仓库地址：
