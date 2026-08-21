@@ -109,7 +109,7 @@ If there is a wrapper command in `Makefile`, `package.json`, `justfile`, or CI, 
 
 ### Step 3: Draft the Structure
 
-Use this skeleton and omit sections that do not apply:
+Use this skeleton and omit sections that do not apply. The `## Code Comments Rules (Strict)` section is mandatory in every created or updated target document; copy it verbatim and do not weaken it:
 
 ````markdown
 # AGENTS.md - <Project Name>
@@ -219,6 +219,26 @@ Explain the failure, why it happens, and the correct pattern.
 - Dependency rules
 - Error/logging conventions
 - UI conventions, if relevant
+
+## Code Comments Rules (Strict)
+
+- Prefer self-explanatory code through clear naming and structure. Comments are secondary.
+- ONLY add or update comments when the logic is **not self-evident**.
+- Comment these things (and only these):
+  - Non-obvious intent and design decisions (the "why")
+  - Important constraints, invariants, ordering requirements, and error modes
+  - Interface/usage contracts that prevent plausible misuse
+  - Business rules or domain constraints that cannot be expressed in code alone
+  - Non-obvious edge cases or workarounds (with brief reason)
+- Do NOT:
+  - Restate what the code obviously does
+  - Add comments to code you did not change
+  - Write play-by-play, change history, ticket numbers, or "TODO/FIXME" status notes
+  - Invent undocumented behavior or constraints
+  - Repeat the same fact across callers and implementations (keep each fact at its owning interface)
+  - Leave tombstones, removed-code explanations, or boilerplate
+- Keep comments short, precise, and up-to-date. Outdated comments are worse than no comments.
+- When in doubt, write clearer code instead of a longer comment.
 ````
 
 ### Step 4: Fill Sections With Evidence
@@ -262,7 +282,8 @@ When updating an existing `AGENTS.md`:
 5. Preserve useful project-specific details and remove stale instructions.
 6. Keep command examples synchronized with actual scripts and Makefile targets.
 7. Add a gotcha or workflow only when it prevents a plausible agent mistake.
-8. Re-read the final document for contradictions.
+8. Add or preserve the required `## Code Comments Rules (Strict)` section verbatim.
+9. Re-read the final document for contradictions.
 
 ## Review Checklist
 
@@ -278,6 +299,7 @@ Before finishing, confirm:
 - Common workflows include update order and verification.
 - Quick references point to real files.
 - Style guidance matches existing code, not external preference.
+- The required `Code Comments Rules (Strict)` section is present and unchanged.
 - There are no invented commands, dependencies, or policies.
 - There is no obsolete content copied from another project.
 
@@ -311,5 +333,6 @@ When creating a new file, produce a complete `AGENTS.md` that is immediately use
 - Common workflows
 - Key files
 - Code style
+- Code comments rules
 
 When updating, summarize the sections changed and the evidence used. If verification was not possible, state the gap explicitly.
