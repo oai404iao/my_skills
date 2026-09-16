@@ -1,3 +1,6 @@
 __pycache__/
 *.py[cod]
 .venv/
+
+# Keep repository instructions visible even when globally ignored.
+!/AGENTS.md
