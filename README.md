@@ -10,6 +10,7 @@
 | [agents-md](agents-md/SKILL.md) | 根据项目证据创建、更新或审查 Agent 仓库指令，避免传播未经确认的通用政策 |
 | [frontend-design](frontend-design/SKILL.md) | 参考 Anthropic 指引的前端设计技能，强调主体特征、排版、克制表达与可用交互 |
 | [git-branch-development-workflow](git-branch-development-workflow/SKILL.md) | 分支开发、worktree 隔离、验证、提交和合并流程 |
+| [llm-prompt-design](llm-prompt-design/SKILL.md) | 按任务设计、比较与评估 LLM 提示词；区分生图/非生图，以及工具和结构化响应契约 |
 
 ## 安装
 
@@ -21,6 +22,7 @@ npx skills add oai404iao/my_skills --skill api-design
 npx skills add oai404iao/my_skills --skill agents-md
 npx skills add oai404iao/my_skills --skill frontend-design
 npx skills add oai404iao/my_skills --skill git-branch-development-workflow
+npx skills add oai404iao/my_skills --skill llm-prompt-design
 ```
 
 交互式安装会选择目标 Agent 和安装范围。远程安装不包含本地尚未发布的修改。
@@ -46,10 +48,25 @@ my_skills/
 │   ├── SKILL.md
 │   └── references/
 │       └── sources.md
-└── git-branch-development-workflow/
+├── git-branch-development-workflow/
+│   ├── SKILL.md
+│   └── references/
+│       └── worktrees.md
+└── llm-prompt-design/
     ├── SKILL.md
     └── references/
-        └── worktrees.md
+        ├── foundations.md
+        ├── strategy-selection.md
+        ├── tasks/
+        │   ├── non-gen-image.md
+        │   └── gen-image.md
+        ├── interfaces/
+        │   ├── tool-schema.md
+        │   └── structured-output.md
+        ├── engineering/
+        │   ├── evaluation.md
+        │   └── provider-compatibility.md
+        └── sources.md
 ```
 
 新增 skill 使用根目录下的 `<skill-name>/SKILL.md`。只有确有需要时才添加 `references/`、`scripts/`、`assets/` 和测试；不为凑齐模板创建空目录。
@@ -59,6 +76,8 @@ my_skills/
 `frontend-design` 最初从本机安装副本纳入，现参考 Anthropic 的 frontend-design skill 重新整理，并保留本仓库的任务范围与验证约束。固定版本链接、采用内容及本地调整见 [来源说明](frontend-design/references/sources.md)；来源仅供追溯，不代表统一授权或上游背书。
 
 `git-branch-development-workflow` 从本机原有的 `~/.agents/skills/` 对应目录原样纳入，包括 worktree 参考文档；未调整其行为规则。本地来源未附带许可证声明。
+
+`llm-prompt-design` 依据 OpenAI、Anthropic、Google 示例及 DAIR.AI 资料独立编写；采用主题、来源及许可说明见 [来源说明](llm-prompt-design/references/sources.md)。图像提示词七槽位公式来自本仓库维护任务，不作为第三方标准。
 
 ## 维护规范
 
