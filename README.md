@@ -6,7 +6,7 @@
 
 | Skill | 用途 |
 | --- | --- |
-| [api-design](api-design/SKILL.md) | JSON HTTP API 命名、批量写入、参数与分页设计，以及旧接口兼容迁移 |
+| [api-design](api-design/SKILL.md) | HTTP API 命名、批量写入、初始化、检索、上传、分页及兼容迁移；按需读取 SM2+SM4 加密实现契约及风险 |
 | [agents-md](agents-md/SKILL.md) | 根据项目证据创建、更新或审查 Agent 仓库指令，避免传播未经确认的通用政策 |
 | [frontend-design](frontend-design/SKILL.md) | 参考 Anthropic 指引的前端设计技能，强调主体特征、排版、克制表达与可用交互 |
 | [git-branch-development-workflow](git-branch-development-workflow/SKILL.md) | 分支开发、worktree 隔离、验证、提交和合并流程 |
@@ -36,7 +36,10 @@ my_skills/
 ├── prompts/
 │   └── coding-principles.md   # 可选公共指令，不是可安装的 skill
 ├── api-design/
-│   └── SKILL.md
+│   ├── SKILL.md
+│   └── references/
+│       ├── application-encryption.md
+│       └── sm2-sm4.md
 ├── agents-md/
 │   └── SKILL.md
 ├── frontend-design/
