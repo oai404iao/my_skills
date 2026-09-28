@@ -6,6 +6,7 @@
 
 | Skill | 用途 |
 | --- | --- |
+| [api-design](api-design/SKILL.md) | JSON HTTP API 命名、批量写入、参数与分页设计，以及旧接口兼容迁移 |
 | [agents-md](agents-md/SKILL.md) | 根据项目证据创建、更新或审查 Agent 仓库指令，避免传播未经确认的通用政策 |
 | [frontend-design](frontend-design/SKILL.md) | 参考 Anthropic 指引的前端设计技能，强调主体特征、排版、克制表达与可用交互 |
 | [git-branch-development-workflow](git-branch-development-workflow/SKILL.md) | 分支开发、worktree 隔离、验证、提交和合并流程 |
@@ -16,6 +17,7 @@
 
 ```bash
 npx skills add oai404iao/my_skills --list
+npx skills add oai404iao/my_skills --skill api-design
 npx skills add oai404iao/my_skills --skill agents-md
 npx skills add oai404iao/my_skills --skill frontend-design
 npx skills add oai404iao/my_skills --skill git-branch-development-workflow
@@ -33,6 +35,8 @@ my_skills/
 ├── AGENTS.md                  # 本仓库维护约定
 ├── prompts/
 │   └── coding-principles.md   # 可选公共指令，不是可安装的 skill
+├── api-design/
+│   └── SKILL.md
 ├── agents-md/
 │   └── SKILL.md
 ├── frontend-design/

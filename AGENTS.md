@@ -13,6 +13,7 @@
 
 - 本仓库是维护来源。不要只修改已安装副本而遗漏仓库源码。
 - 每个 skill 的 frontmatter 至少包含 `name`、`description`；名称与目录一致。
+- 新建或维护 skill 时可参考 [Agent Skills Quickstart](https://agentskills.io/skill-creation/quickstart.md) 了解基本格式和加载流程；其中的 VS Code 操作与 `.agents/skills/` 路径是教程示例，不是本仓库的安装要求。
 - 技能内容要能随目录迁移；相对路径以该 skill 所在目录解析。
 - 将长参考材料按需拆分，不添加无用途的空目录或跨 skill 隐式依赖。
 - 保留第三方内容的来源、许可证及署名；不要替来源不明的内容补造授权。
