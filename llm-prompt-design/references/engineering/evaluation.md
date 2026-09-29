@@ -18,4 +18,10 @@
 
 比较时记录：`任务/样本版本 → prompt/schema 版本 → 模型及设置 → 结果 → 失败类型 → 下一项单变量修改`。批量评估不是普通单次创作的门槛；只有一个样例时先做针对性检查，不假装有统计显著性。视觉图常需人工盲评和逐项核对；图片 API 输出参数可能比多加形容词更有效。上线后如允许，监控输入分布变化及模型/API 升级的回归。
 
+## 测试证明什么
+
+区分模板渲染、解析/schema、本地业务逻辑和真实模型行为。前几层通过不能代替最后一层的效果评估；未获授权运行模型时，报告已验证的边界和未验证事项，不用“prompt 包含某句话”充当行为证据。
+
+措辞锁定、矛盾 fake 响应及有效测试的边界，见 [通用反模式与反例](anti-patterns.md)。不因发现脆弱断言就全删 snapshot 或 fake 测试，也不为纯文案修改新建镜像文本测试。
+
 参考 [Anthropic 评估前置建议](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview)、[OpenAI 提示工程](https://developers.openai.com/api/docs/guides/prompt-engineering)与 [OpenAI 图片提示检查建议](https://developers.openai.com/api/docs/guides/image-prompting)。任务样本和指标是本 skill 的工程化整理，不能当作已跑过的实验结果。

@@ -23,6 +23,7 @@ description: 设计、改进或评审 LLM 提示词与提示词工程方案，�
 | 编写、调整工具名称、描述、参数 | [工具契约](references/interfaces/tool-schema.md) |
 | 机器可解析的最终回答、`response_format` / `text.format` | [结构化响应](references/interfaces/structured-output.md) |
 | 要做 A/B 对比、诊断失败、上线优化 | [评估与迭代](references/engineering/evaluation.md) |
+| 评审或维护 prompt、response schema 及其测试 | [通用反模式与反例](references/engineering/anti-patterns.md) |
 | 要提供某平台的实际请求字段或讨论迁移 | [平台差异](references/engineering/provider-compatibility.md)，并核对当前官方文档 |
 | 要追溯采用依据、许可证 | [来源说明](references/sources.md) |
 
