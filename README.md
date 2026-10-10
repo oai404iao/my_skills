@@ -8,7 +8,7 @@
 | --- | --- |
 | [api-design](api-design/SKILL.md) | HTTP API 命名、批量写入、初始化、检索、上传、分页及兼容迁移；按需读取 SM2+SM4 加密实现契约及风险 |
 | [agents-md](agents-md/SKILL.md) | 根据项目证据创建、更新或审查 Agent 仓库指令，避免传播未经确认的通用政策 |
-| [frontend-design](frontend-design/SKILL.md) | 参考 Anthropic 指引的前端设计技能，强调主体特征、排版、克制表达与可用交互 |
+| [frontend-design](frontend-design/SKILL.md) | 完整迁入 ikadesign3 的强制 design.md 流程：提取、创建、实现与审查 |
 | [git-branch-development-workflow](git-branch-development-workflow/SKILL.md) | 分支开发、worktree 隔离、验证、提交和合并流程 |
 | [llm-prompt-design](llm-prompt-design/SKILL.md) | 按任务设计、比较与评估 LLM 提示词；区分生图/非生图，以及工具和结构化响应契约 |
 
@@ -26,6 +26,8 @@ npx skills add oai404iao/my_skills --skill llm-prompt-design
 ```
 
 交互式安装会选择目标 Agent 和安装范围。远程安装不包含本地尚未发布的修改。
+
+当前工作树的 `frontend-design` 直接迁入了 Ikaleio 的原文，其适用的再分发许可尚未确认。发布或分发该版本前须明确授权；不要把安装命令或公开源码当成许可声明。详见 [来源说明](frontend-design/references/sources.md)。
 
 本地验证后，可以将对应 skill 目录同步到实际安装目录。同步前检查目标是否有本地修改；同步该 skill 的入口和必要引用文件，不复制整个仓库，也不覆盖其他 skills。
 
@@ -47,6 +49,9 @@ my_skills/
 ├── frontend-design/
 │   ├── SKILL.md
 │   └── references/
+│       ├── design-contract.md
+│       ├── build-workflow.md
+│       ├── review-loop.md
 │       └── sources.md
 ├── git-branch-development-workflow/
 │   ├── SKILL.md
@@ -73,7 +78,7 @@ my_skills/
 
 ## 纳入来源
 
-`frontend-design` 最初从本机安装副本纳入，现参考 Anthropic 的 frontend-design skill 重新整理，并保留本仓库的任务范围与验证约束。固定版本链接、采用内容及本地调整见 [来源说明](frontend-design/references/sources.md)；来源仅供追溯，不代表统一授权或上游背书。
+`frontend-design` 当前完整迁入 `Ikaleio/skills` 的 `ikadesign3`（固定提交 `5276d6e`），保留其强制 design.md 前置、测量记录、规则标签、实现绑定和单次复查流程；适配技能名称与来源引用，并按用户要求加入少用口径、脚注和底部说明的文案约束。上游检查规则的已知冲突原样保留并另行记录。此前 Anthropic 版本的来源也保留在 [来源说明](frontend-design/references/sources.md)；来源仅供追溯，不代表再分发许可、统一授权或上游背书。
 
 `git-branch-development-workflow` 从本机原有的 `~/.agents/skills/` 对应目录原样纳入，包括 worktree 参考文档；未调整其行为规则。本地来源未附带许可证声明。
 
