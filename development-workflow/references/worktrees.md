@@ -1,6 +1,8 @@
-# Git Worktree 操作参考
+# Worktree 隔离开发
 
-本参考用于创建、使用、同步、恢复和清理 repo-local linked worktree。主流程和分支策略见 [Git Branch Development Workflow](../SKILL.md)。
+本参考用于创建、使用、同步、恢复和清理 repo-local linked worktree。
+
+**只在确实需要隔离时读取**：默认流程是在当前工作树用分支开发，不使用 worktree。用户要求隔离、需要并行处理多个任务、或当前工作区的无关改动不该被打断时，才按本参考操作。主流程和默认约定见 [开发流程指南](../SKILL.md)。
 
 ## 约定
 
