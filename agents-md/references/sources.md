@@ -43,8 +43,11 @@ Exact file permalinks and observations are in [Repository patterns](repository-p
 | `astral-sh/uv` | `4bf8e7be2777dc545cd554ba91a4d9cd4bb9e594` |
 | `apache/airflow` | `65a83820fefdf693153c2f1016af4daa6c1fbe61` |
 | `vercel/turborepo` | `34e255684268c31ef961dacd82b783baf69c6c35` |
+| `earendil-works/pi` | `42a3497d03ad17e308a2299fa824727894f2c0ec` |
 
 These established repositories were selected for contrasting flat, local, shared, and generated instruction patterns, not as a ranked popularity sample or a quality benchmark. Their commands, style rules, approval boundaries, and Git policies remain project-local.
+
+For Pi, inspected the root `AGENTS.md`, `CONTRIBUTING.md`, `.pi/skills/interactive-testing.md`, and `.pi/skills/release.md` at the pinned commit. The analysis concerns instruction writing and task routing, not Pi host discovery. Its [LICENSE](https://github.com/earendil-works/pi/blob/42a3497d03ad17e308a2299fa824727894f2c0ec/LICENSE) is MIT, copyright 2025 Mario Zechner; this skill adds attributed analysis, not a vendored copy of those instructions.
 
 ## Reuse and Verification Boundaries
 
