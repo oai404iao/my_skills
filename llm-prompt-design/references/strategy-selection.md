@@ -1,20 +1,20 @@
-# 方案选择：先看失败模式，再增加复杂度
+# Strategy selection: Examine failure modes before adding complexity
 
-以下是**选择假设**，不是未经测试的效果承诺。对照 [非生图示例](tasks/non-gen-image.md)、[生图示例](tasks/gen-image.md)；证据与指标见 [评估](engineering/evaluation.md)。
+The following are **selection hypotheses**, not untested promises of effectiveness. Compare the [Non-image-generation examples](tasks/non-gen-image.md) and [Image-generation examples](tasks/gen-image.md); see [Evaluation](engineering/evaluation.md) for evidence and metrics.
 
-| 方案 | 适用任务 / 触发条件 | 预期改善 | 代价 / 不适用情形 |
+| Approach | Applicable tasks / triggers | Expected improvement | Costs / unsuitable cases |
 | --- | --- | --- | --- |
-| 明确任务、受众、输入边界、输出标准（zero-shot） | 所有任务的基线；摘要、翻译、通用生图 | 减少歧义，保持短小 | 缺外部事实或真实输入时不足以解决问题 |
-| 标签定义、决策优先级 | 分类、路由、风险分级 | 相近类别更可区分 | 标签不互斥或业务规则缺失时须先定规则 |
-| 1～数个输入/输出示例（few-shot） | 格式、边界、语气有持续错误 | 示范难以文字定义的差异 | 长度/维护成本；错误示例会放大错误 |
-| 分隔符、来源 ID、缺证据退让 | 长文摘要、RAG 问答、抽取 | 减少来源混淆并暴露无依据答案 | 来源本身缺失/错误时仍不能保证正确 |
-| 检索或只读工具 | 当前或私有数据 | 补足模型没有的事实 | 引入延迟、访问控制、来源质量问题；不用工具时不要编造结果 |
-| 分步生成 + 阶段验收 | 可独立核对的代码、复杂报告或多条件图稿 | 更容易定位哪一步失败 | 额外轮次/成本；简单任务不必拆 |
-| tool schema + 描述、调用策略 | 必须与外部系统交互，尤其多工具重叠 | 提高选工具/传参可控性 | 不代替执行权限与确认；见 [工具契约](interfaces/tool-schema.md) |
-| 结构化响应 schema + prompt 语义规则 | 下游机器处理的抽取/分类 | 降低解析和字段形状错误 | 不保证事实正确；见 [结构化响应](interfaces/structured-output.md) |
-| 生图的主体、场景、光线、构图、媒介渐进补充 | 商品摄影、插画、广告画面 | 增加可观察的视觉控制 | 过度限定降低探索；相机参数不是物理仿真 |
-| 参考图 + 变更/保留列表 | 图片编辑、系列一致性 | 减少主体/布局漂移 | 需要支持图片输入的模型；结果仍须逐张检查 |
+| Explicit task, audience, input boundaries, output criteria (zero-shot) | Baseline for all tasks; summarization, translation, general image generation | Reduce ambiguity while staying concise | Insufficient when external facts or actual inputs are missing |
+| Label definitions, decision priorities | Classification, routing, risk grading | Better distinguish similar categories | Define rules first when labels overlap or business rules are missing |
+| One to several input/output examples (few-shot) | Persistent errors in format, boundaries, or tone | Demonstrate differences hard to define in words | Length/maintenance costs; incorrect examples amplify errors |
+| Delimiters, source IDs, abstention when evidence is missing | Long-text summarization, RAG question answering, extraction | Reduce source confusion and expose unsupported answers | Cannot guarantee correctness when sources themselves are missing/incorrect |
+| Retrieval or read-only tools | Current or private data | Supply facts the model lacks | Add latency, access-control, and source-quality concerns; do not invent results when tools are not used |
+| Staged generation + stage acceptance checks | Independently checkable code, complex reports, or image drafts with multiple requirements | Easier localization of failed steps | Extra rounds/cost; simple tasks need not be decomposed |
+| Tool schema + descriptions, calling policy | Required interaction with external systems, especially overlapping tools | Improve control over tool selection and arguments | Does not replace execution permissions or confirmation; see [Tool contracts](interfaces/tool-schema.md) |
+| Structured response schema + semantic prompt rules | Extraction/classification processed by downstream machines | Reduce parsing and field-shape errors | Does not guarantee factual correctness; see [Structured responses](interfaces/structured-output.md) |
+| Progressively add subject, setting, lighting, composition, and medium for image generation | Product photography, illustration, advertising visuals | Increase observable visual control | Excessive constraints reduce exploration; camera parameters are not physical simulation |
+| Reference images + change/preservation lists | Image editing, series consistency | Reduce subject/layout drift | Requires a model supporting image inputs; every result still needs checking |
 
-**取舍示例：**用户要“把一段反馈分为投诉/建议/其他”，先定义三类及无法判断的归属；只有混合反馈频繁分错，才补 few-shot。用户问“今天订单在哪里”，调整语气无用，应先拿到授权的订单查询能力。用户要摄影风海报，先固定主体、构图和版面留白；反复列相机型号不一定改善文字拼写或商标保真。用户要入库 JSON，则用响应 schema，不能用一个“返回 JSON”句子代替接口约束。
+**Trade-off examples:** For "classify feedback as complaint/suggestion/other," first define the three categories and where indeterminate cases belong; add few-shot examples only if mixed feedback is often misclassified. For "where is my order today," adjusting tone is useless; first obtain authorized order-query capabilities. For a photographic-style poster, first fix the subject, composition, and layout whitespace; repeatedly listing camera models may not improve spelling or logo fidelity. For JSON to store in a database, use a response schema; "return JSON" cannot replace interface constraints.
 
-“让模型先想很久”“自我投票”“每题都套固定角色”不是默认步骤；仅在目标模型、预算与对照测试支持时采用。对于多步骤推理，可要求对外展示可检查的结论和必要依据，避免把冗长推理当作正确性证据。若主要瓶颈是模型能力、缺失数据或不可支持的 API 参数，换模型/信息来源/流程可能比再改 prompt 更有效。[Anthropic 概览](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview)和 [DAIR.AI 技巧目录](https://github.com/dair-ai/Prompt-Engineering-Guide)提供进一步技术索引，选用仍需任务验证。
+"Make the model think for a long time first," "self-voting," and "assign a fixed role to every question" are not default steps; adopt them only when supported by the target model, budget, and comparative tests. For multi-step reasoning, request externally visible, checkable conclusions and necessary supporting evidence; do not treat lengthy reasoning as proof of correctness. If the main bottleneck is model capability, missing data, or unsupported API parameters, changing the model/information source/workflow may be more effective than revising the prompt again. The [Anthropic overview](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview) and [DAIR.AI technique directory](https://github.com/dair-ai/Prompt-Engineering-Guide) provide further technique indexes; adoption still requires task-specific validation.

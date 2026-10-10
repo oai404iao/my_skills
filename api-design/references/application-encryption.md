@@ -1,25 +1,25 @@
-# 应用层加密：选型与接口契约
+# Application-Layer Encryption: Selection and API Contracts
 
-仅在任务明确涉及应用层报文加密时阅读。本文件是选型与风险检查表，不是对所有 HTTP API 的加密要求，也不替代安全审查。当前收录的详细实现契约只有 [SM2+SM4 v1](sm2-sm4.md)；若项目已有其他方案，先核对现行契约与迁移授权，不擅自替换或引入双重加密。
+Read only when the task explicitly involves application-layer message encryption. This file is a selection and risk checklist, not an encryption requirement for all HTTP APIs or a substitute for security review. The only detailed implementation contract currently included is [SM2+SM4 v1](sm2-sm4.md). If the project already uses another scheme, first check the current contract and migration authorization; do not replace it or introduce double encryption without authorization.
 
-## 先判断是否需要
+## First Determine Whether It Is Needed
 
-1. 明确威胁模型：哪些主体可在 TLS 终止后看到数据，哪些字段/文件必须跨哪些边界保密或认证，哪些不需要。先核对传输层保护、网关日志、鉴权、数据落地与实际调用方；应用层加密不能代替 TLS 或授权。[OWASP TLS 指南](https://cheatsheetseries.owasp.org/cheatsheets/Transport_Layer_Security_Cheat_Sheet.html)
-2. 盘点真实媒体类型与端点：JSON、multipart、无 body 请求、异步任务/回调、空响应、错误及文件下载分别有什么数据暴露面。部分字段或文件若保持明文，不能声称整个请求/响应均受应用层加密；不在 URL、日志或追踪里留下敏感明文。
-3. 先查项目已发布的信封协议、客户端和运维约束。没有加密需求时保持原接口；若确需引入新方案，按项目批准范围选择并行契约、兼容期和强制策略，不能仅凭新 skill 关闭旧客户端。
+1. Define the threat model: which parties can see data after TLS termination, which fields/files must remain confidential or authenticated across which boundaries, and which do not need this protection. First check transport-layer protection, gateway logs, authentication, persisted data, and actual callers; application-layer encryption cannot replace TLS or authorization. [OWASP TLS guidance](https://cheatsheetseries.owasp.org/cheatsheets/Transport_Layer_Security_Cheat_Sheet.html)
+2. Inventory actual media types and endpoints: identify the data exposure surfaces of JSON, multipart, bodyless requests, asynchronous tasks/callbacks, empty responses, errors, and file downloads separately. If some fields or files remain plaintext, do not claim the entire request/response is protected by application-layer encryption; do not leave sensitive plaintext in URLs, logs, or traces.
+3. First check the project's published envelope protocol, clients, and operational constraints. Keep the original endpoints if encryption is not required. If a new scheme is genuinely needed, choose parallel contracts, compatibility periods, and enforcement policies within the project's approved scope; do not disable old clients merely because a new skill says so.
 
-## 每个选定方案要交付的契约
+## Contracts to Deliver for Each Selected Scheme
 
-- **线格式**：协议/算法版本、密钥标识、请求与响应如何声明加密、媒体类型、密文与认证标签编码；逐一描述成功、错误、无 body、鉴权失败、multipart 与异步任务结果。若同一端点兼容多套信封，明确互斥判别，避免不可信请求字段触发降级。
-- **身份与密钥**：公钥真实性或密钥分发信任链、加密密钥与签名/认证密钥的用途分离、生命周期、轮换重叠期及吊销；不得明文传递会话密钥、把私钥或密钥材料写入代码仓库/日志。密钥 ID、会话和租户边界需与既有鉴权对齐，但仅加密报文不证明调用方身份；若 TLS 卸载点可见 Bearer 令牌且需抵御它伪造请求，另需调用方持有、该节点无法取得的认证材料。
-- **完整性与重放**：明确哪些方法、路径、字段名、明文 query/文件及响应状态参与认证，哪些仅依赖 TLS；不把局部加密宣称为整份请求的完整性保护。对每次 AEAD 加密确保同一密钥下 nonce 不重复，拒绝认证失败。时间戳窗口或请求序号本身不阻止窗口内重放：若方案明确允许重放，应披露重复副作用并为写操作另定业务幂等；若要求阻断重放，才需设计并发和多实例下的去重机制。幂等键不能代替报文认证。
-- **明文边界**：URL/query、文件 part、日志、缓存、代理、回调和错误消息各自仍可能泄露信息。确需对文件内容做应用层保护时采用经过审查的认证分块协议；仅加密 multipart 文本字段并不能保护文件字节。
-- **迁移与验证**：明确按接口/调用方何时允许明文、何时强制加密；强制加密不能因缺失可剥离的标记自动降级，双轨期也不能将未预期的明文成功响应当作已加密响应。区分旧约定兼容与已启用新约定的端点。提供跨语言测试向量和字段/报文篡改、交换、重放、密钥轮换、错误及空响应、上传、代理转发等验证。合规性与密码算法许可范围由项目安全/合规负责人核实，不能因列出算法或标准号便宣称通过测评。
+- **Wire format**: protocol/algorithm versions, key identifiers, how requests and responses declare encryption, media types, and ciphertext/authentication-tag encoding. Describe success, errors, bodyless messages, authentication failures, multipart, and asynchronous task results individually. If one endpoint supports multiple envelopes, define mutually exclusive discriminators to prevent untrusted request fields from triggering a downgrade.
+- **Identity and keys**: public-key authenticity or the trust chain for key distribution, separation of encryption keys from signing/authentication keys, lifecycles, rotation overlap periods, and revocation. Never transmit session keys in plaintext or put private keys/key material in source repositories/logs. Key IDs, sessions, and tenant boundaries must align with existing authentication, but message encryption alone does not establish caller identity. If a TLS offload point can see Bearer tokens and the design must resist requests forged by it, additional caller-held authentication material inaccessible to that node is required.
+- **Integrity and replay**: specify which methods, paths, field names, plaintext query values/files, and response statuses are authenticated and which rely only on TLS; do not claim partial encryption protects the integrity of the entire request. Ensure nonces never repeat under the same key for each AEAD encryption, and reject authentication failures. A timestamp window or request sequence number alone does not prevent replay within the window. If the scheme explicitly allows replay, disclose duplicate side effects and separately define business idempotency for writes; only if replay must be blocked is a deduplication mechanism under concurrency and across multiple instances required. Idempotency keys cannot replace message authentication.
+- **Plaintext boundaries**: URLs/query strings, file parts, logs, caches, proxies, callbacks, and error messages may still leak information. If file content genuinely requires application-layer protection, use a reviewed authenticated chunking protocol; encrypting multipart text fields alone does not protect file bytes.
+- **Migration and verification**: specify when plaintext is allowed and when encryption is mandatory for each endpoint/caller. Mandatory encryption must not automatically downgrade because a removable marker is missing; during dual operation, unexpected successful plaintext responses must not be treated as encrypted responses either. Distinguish compatibility with old conventions from endpoints using the new ones. Provide cross-language test vectors and checks for field/message tampering, swapping, replay, key rotation, errors and empty responses, uploads, and proxy forwarding. Project security/compliance owners must verify compliance and permitted cryptographic-algorithm usage; listing algorithms or standard numbers does not mean an assessment has been passed.
 
-## 方案选择
+## Scheme Selection
 
-| 方案 | 读取时机 | 边界 |
+| Scheme | When to read | Boundaries |
 | --- | --- | --- |
-| [SM2+SM4 v1](sm2-sm4.md) | 用户或已核实的项目契约选定国密应用层信封 | 以已落地的无状态线格式为基线，另定义有状态/缓存/分级策略；不与原草案的同名 v1 线格式互通，正式收录不代表安全评审通过 |
+| [SM2+SM4 v1](sm2-sm4.md) | The user or a verified project contract selects an application-layer envelope using Chinese cryptographic algorithms | Uses the implemented stateless wire format as its baseline and separately defines stateful/caching/tiered policies; incompatible with the original draft's identically named v1 wire format, and inclusion here does not signify approval by a security review |
 
-选用该方案时先以其详细契约核对项目现有实现，明确记录尚未落地的部分和安全风险；本检查表不暗中修改任何已发布的线格式。
+When selecting this scheme, first compare its detailed contract with the project's existing implementation, and explicitly record unimplemented parts and security risks; this checklist does not silently alter any published wire format.

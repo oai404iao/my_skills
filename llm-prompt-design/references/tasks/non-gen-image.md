@@ -1,84 +1,84 @@
-# 非 `gen_image`：按任务给出可复用示例
+# Non-`gen_image`: Reusable examples by task
 
-本页示例是原创的**示意输入**，不是已测出的最佳提示词。若处理图片 OCR/看图问答但不生成图片，也沿用抽取/问答方案并把图片作为输入。先读 [方案选择](../strategy-selection.md)；要机器输出读 [结构化响应](../interfaces/structured-output.md)，要调用业务工具读 [工具契约](../interfaces/tool-schema.md)。
+The examples on this page are original **illustrative inputs**, not prompts measured to be optimal. For image OCR/visual question answering without image generation, also use extraction/question-answering approaches with the image as input. Read [Strategy selection](../strategy-selection.md) first; for machine-readable output, read [Structured responses](../interfaces/structured-output.md); for calling business tools, read [Tool contracts](../interfaces/tool-schema.md).
 
-## 1. 分类：从模糊意图到明确判定
+## 1. Classification: From vague intent to explicit decisions
 
-基线“判断这条工单是什么类型”没有类别边界。**零样本方案**适合分类定义已清楚的工单：
+The baseline "determine this ticket's type" lacks category boundaries. A **zero-shot approach** suits tickets with clearly defined categories:
 
 ```text
-给工单选择一个主要类别：billing（扣费、发票、退款）、
-technical（功能报错、无法使用）、other（其余或无法判断）。
-同时出现多个诉求且没有主要诉求时归入 other。
-只依据 <ticket> 内容判定，不推测账户历史。
-<ticket>{{工单正文}}</ticket>
+Choose one primary category for the ticket: billing (charges, invoices, refunds),
+technical (feature errors, inability to use a feature), other (anything else or indeterminate).
+If multiple requests occur without a primary request, choose other.
+Decide only from <ticket>; do not infer account history.
+<ticket>{{ticket_body}}</ticket>
 ```
 
-示意输入“扣了两次钱怎么退？”预期 `billing`。若“退款时页面崩溃”经常被混淆，**few-shot 方案**可在本次输入前加入项目审核过的示例：`“发票抬头错了” → billing`、`“页面加载失败” → technical`、一个混合且主诉求不明的 `other`。示例须与类别定义一致，不要只给容易区分的正例。
+The illustrative input "I was charged twice. How do I get a refund?" should yield `billing`. If "the page crashes when I request a refund" is often confused, a **few-shot approach** can add project-reviewed examples before the current input: `"The invoice name is wrong" → billing`, `"The page failed to load" → technical`, and a mixed case with no clear primary request labeled `other`. Examples must match category definitions, not just include easily distinguished positive cases.
 
-**选择与效果：**先零样本；边界样本错误多时才补 few-shot，预期降低相近类别误判，但增加 token、可能过拟合案例。验收用每类与混合类的保留样本比较混淆矩阵；下游解析标签时使用 [响应 schema](../interfaces/structured-output.md)，不要只依赖“仅输出一个词”。
+**Choice and effects:** Start zero-shot; add few-shot examples only when many boundary cases fail. Expect fewer errors between similar categories, at the cost of more tokens and possible overfitting to examples. For acceptance, compare confusion matrices on held-out samples from each category and mixed cases; use a [Response schema](../interfaces/structured-output.md) when downstream code parses labels rather than relying only on "output one word."
 
-## 2. 抽取：明确缺失而非补全想象
+## 2. Extraction: Make missing information explicit rather than inventing it
 
-基线“帮我整理工单”容易生成未出现的姓名、编号。改为：
+The baseline "organize this ticket for me" can generate names and identifiers that never appeared. Replace it with:
 
 ```text
-从 <ticket> 提取明确写出的订单号和原文中的问题短语。
-若没有订单号，记为未知；不要从上下文猜测或补造。
-<ticket>{{工单正文}}</ticket>
+Extract the explicitly stated order number and the original problem phrase from <ticket>.
+If there is no order number, mark it unknown; do not guess from context or invent one.
+<ticket>{{ticket_body}}</ticket>
 ```
 
-示意输入“订单 A123 被重复扣费”，预期订单号 `A123`、问题证据“重复扣费”；“重复扣费但没给订单号”应保持订单号未知。数据库写入需配套明确的 `string | null` 字段和校验，见 [完整 schema 示例](../interfaces/structured-output.md)。**效果与代价：**约束信息来源有助于减少虚构字段；不能使有歧义的原文自动变准确。验收看字段准确率、缺失值误填率与无关文本诱导。
+For "Order A123 was charged twice," expect order number `A123` and problem evidence "charged twice"; "charged twice but no order number provided" should keep the order number unknown. Database writes require explicit `string | null` fields and validation; see the [Complete schema example](../interfaces/structured-output.md). **Effects and costs:** Constraining information sources helps reduce invented fields; it cannot automatically resolve ambiguous source text. Assess field accuracy, incorrect filling of missing values, and inducement by irrelevant text.
 
-## 3. 带来源的问答：查询证据而非朗读常识
+## 3. Source-grounded question answering: Query evidence instead of reciting general knowledge
 
-基线“偏远地区配送要几天？”在缺资料时易猜数字。示意材料（虚构，仅演示引用方式）：
+The baseline "how many days does delivery to remote areas take?" invites guessed numbers when information is missing. Illustrative material (fictional, only demonstrating citations):
 
 ```text
-只根据 <sources> 回答 <question>。每个事实写出对应 source id。
-没有具体信息时直说“资料未说明”，不要用常识补齐天数。
+Answer <question> using only <sources>. Give the corresponding source id for each fact.
+If specific information is absent, say "The sources do not specify"; do not fill in days using general knowledge.
 <sources>
-  <source id="S1">普通配送通常为 3～5 天。</source>
-  <source id="S2">偏远地区的预计送达时间以结算页显示为准。</source>
+  <source id="S1">Standard delivery usually takes 3–5 days.</source>
+  <source id="S2">Estimated delivery times for remote areas are those shown at checkout.</source>
 </sources>
-<question>偏远地区配送要几天？</question>
+<question>How many days does delivery to remote areas take?</question>
 ```
 
-预期：“资料未说明偏远地区的具体天数；应查看结算页预计时间 [S2]。”**选择与效果：**资料在上下文里时可直接限定来源；资料不在或有时效时需要授权的检索/只读工具，而不是多加“务必准确”。来源 ID 便于核对，但有引用不等于引用支持结论；验收逐句核对来源和无依据回答率。
+Expected: "The sources do not specify the number of days for remote areas; check the estimated time at checkout [S2]." **Choice and effects:** When sources are in context, directly limit the answer to them; when absent or time-sensitive, use authorized retrieval/read-only tools instead of adding more "be accurate" instructions. Source IDs aid checking, but a citation does not mean its source supports the conclusion; check support sentence by sentence and the rate of unsupported answers.
 
-## 4. 摘要：区分决定、待办和未决
+## 4. Summarization: Distinguish decisions, action items, and unresolved matters
 
-基线“总结会议”会把建议写成已批准行动。改为：
+The baseline "summarize the meeting" can turn proposals into approved actions. Replace it with:
 
 ```text
-仅依据 <notes> 输出三个栏目：已决定、待办、未决。
-只有明确同意的事项进入“已决定”；待办缺负责人/期限时标“未指定”；
-讨论中的提议进入“未决”。保留争议点，不编造承诺。
-<notes>{{会议记录}}</notes>
+Using only <notes>, output three sections: Decisions, Action items, Unresolved.
+Only explicitly agreed items belong in Decisions; mark missing action owners/deadlines as "Unspecified";
+proposals under discussion belong in Unresolved. Preserve disputed points; do not invent commitments.
+<notes>{{meeting_notes}}</notes>
 ```
 
-示意记录：“甲提议周五上线；乙认为需要先测；无人定发布日期。”预期“未决：上线日期和测试方案”，而不是“已决定周五上线”。**选择与效果：**栏目与判定规则减少身份/状态混淆；在长记录或多说话人交叉引用时仍需回到原文核对遗漏，并考虑分段汇总的边界丢失。
+Illustrative notes: "A proposed launching Friday; B said testing was needed first; nobody set a release date." Expect "Unresolved: launch date and testing plan," not "Decision: launch Friday." **Choice and effects:** Sections and decision rules reduce confusion about identities/statuses; long notes or cross-references among multiple speakers still require checking the original for omissions and considering boundary information lost in segmented summarization.
 
-## 5. 写作、改写、翻译：控制目标，不锁死措辞
+## 5. Writing, rewriting, translation: Control goals without fixing wording
 
 ```text
-为通勤人群写两版帆布包商品简介，各 40～60 字，语气平实。
-已知信息：可折叠、侧袋可放水杯。不要添加未提供的环保认证或承重数字。
-版本 A 强调收纳；版本 B 强调取放便利。
+Write two canvas bag product descriptions for commuters, each 40–60 characters, in a plain tone.
+Known facts: foldable, side pocket fits a water bottle. Do not add unprovided environmental certifications or weight-capacity figures.
+Version A emphasizes storage; version B emphasizes easy access.
 ```
 
-**选择与效果：**用受众、用途、事实和可变维度约束创作，预期文案更贴场景；few-shot 只在品牌语气难以描述且有获准样稿时加入。比对产品事实错误、受众偏离和 A/B 差异。翻译任务类似：明确受众、术语表、哪些专名不翻译；不要让“流畅”覆盖必须保持的数字与名称。写作无需机器解析时，不为整齐强制套 JSON。
+**Choice and effects:** Constrain creation with audience, purpose, facts, and dimensions to vary, with the expectation of more context-appropriate copy; add few-shot examples only when brand tone is hard to describe and approved samples exist. Compare product-fact errors, audience mismatch, and A/B differences. Translation is similar: specify the audience, glossary, and proper names not to translate; do not let "fluency" override numbers and names that must be preserved. When writing does not require machine parsing, do not force JSON merely for neatness.
 
-## 6. 代码与复杂分析：把验收变成可检查事项
+## 6. Code and complex analysis: Turn acceptance into checkable items
 
 ```text
-根据以下接口契约实现函数 {{函数名}}；沿用目标仓库语言和现有错误风格。
-输入、返回值与边界：{{已确认契约}}。
-给出针对空输入、正常输入和无效输入的必要测试。
-若关键行为未定义，指出缺口，勿自定破坏兼容的默认值；
-不得声称未运行的测试已经通过。
+Implement function {{function_name}} according to the following interface contract; use the target repository's language and existing error conventions.
+Inputs, return values, and boundaries: {{confirmed_contract}}.
+Provide necessary tests for empty, normal, and invalid inputs.
+If critical behavior is undefined, identify the gap; do not invent compatibility-breaking defaults;
+do not claim tests passed when they were not run.
 ```
 
-**选择与效果：**先查真实仓库契约，再用可验证测试覆盖边界。任务有独立的提取、生成、验证阶段且直接生成频繁出错时才拆步；拆步便于定位失败，却增加调用轮次，不代替执行测试。外部事实或仓库内容未知时，应读取/检索，而不是给模型添加角色头衔。
+**Choice and effects:** Inspect actual repository contracts first, then cover boundaries with verifiable tests. Decompose only when the task has independently checkable extraction, generation, and validation stages and direct generation frequently fails; decomposition helps locate failures but adds invocation rounds and does not replace running tests. When external facts or repository contents are unknown, read/retrieve them rather than adding role titles to the model.
 
-这些案例的预期效果须按 [评估与迭代](../engineering/evaluation.md)实测；技巧分类参考 [OpenAI 提示工程](https://developers.openai.com/api/docs/guides/prompt-engineering)、[Google prompt design notebook](https://github.com/GoogleCloudPlatform/generative-ai/blob/main/gemini/prompts/intro_prompt_design.ipynb)及 [DAIR.AI 指南](https://github.com/dair-ai/Prompt-Engineering-Guide)，上述工单、配送和商品内容均为本地示意。
+Measure the expected effects of these cases using [Evaluation and iteration](../engineering/evaluation.md); technique categories draw on [OpenAI prompt engineering](https://developers.openai.com/api/docs/guides/prompt-engineering), the [Google prompt design notebook](https://github.com/GoogleCloudPlatform/generative-ai/blob/main/gemini/prompts/intro_prompt_design.ipynb), and the [DAIR.AI guide](https://github.com/dair-ai/Prompt-Engineering-Guide). All ticket, delivery, and product content above is locally created illustrative material.

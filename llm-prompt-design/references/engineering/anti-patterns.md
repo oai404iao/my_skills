@@ -1,124 +1,124 @@
-# Prompt、schema 与测试的通用反模式
+# Common anti-patterns in prompts, schemas, and tests
 
-以下是从代码评审问题抽象出的示意反例，不是模型实测结果。用于区分生成指导、接口合同与效果验证，不把某种措辞或测试工具一概判错。评审任务只报告问题；修改应限于授权范围，尤其不要擅自改变业务推断规则。
+The following are illustrative counterexamples distilled from code-review issues, not measured model results. They distinguish generation guidance, interface contracts, and effectiveness validation without categorically condemning wording or testing tools. Review tasks only report issues; changes must stay within the authorized scope, especially without unilaterally changing business inference rules.
 
-## 1. 说明对象错位：把开发备注写给模型
+## 1. Addressing the wrong audience: Developer notes written to the model
 
-**反例**
+**Counterexample**
 
 ```json
 {
   "type": "string",
-  "description": "建议60-180字；该长度仅为生成提示，不作为校验条件。"
+  "description": "Suggested length: 60–180 characters; this length is only generation guidance, not a validation condition."
 }
 ```
 
-**问题**：后半句解释服务端如何校验，不帮助模型完成任务；前半句又只有篇幅，没说明字段要表达什么。模型可见的 schema 不应承担维护笔记的职责。
+**Problem:** The second half explains server-side validation rather than helping the model complete the task; the first half specifies length alone, not what the field should convey. Model-visible schemas should not serve as maintenance notes.
 
-**改法**：例如改为“概括最重要的已知事实及判断局限；无依据时说明资料不足。建议60-180字。”把校验策略放到开发文档，硬限制用目标平台支持的 schema 关键字及本地校验表达。必要的任务分工（例如只生成文本、不生成 HTML）仍是有效指令，不属于应删除的开发备注。
+**Fix:** For example, change it to "Summarize the most important known facts and limitations of the assessment; state that information is insufficient when there is no evidence. Suggested length: 60–180 characters." Put validation policy in developer documentation, and express hard limits through schema keywords supported by the target platform and local validation. Necessary task boundaries (such as generating text only, not HTML) remain valid instructions, not developer notes to remove.
 
-**验证**：按设计检查 schema 关键字及边界输入的实际接受/拒绝结果，而不是强制 description 含有“建议”或“不作为校验条件”。
+**Verification:** Check schema keywords and actual acceptance/rejection of boundary inputs against the design, rather than requiring descriptions to contain "suggested" or "not a validation condition."
 
-## 2. 措辞冒充语义：用出现某句话证明行为正确
+## 2. Wording mistaken for semantics: Proving behavior by the presence of a sentence
 
-**反例**
+**Counterexample**
 
 ```python
-assert "不要编造日期" in prompt
-assert "缩小字号" in prompt
+assert "Do not invent dates" in prompt
+assert "reduce the font size" in prompt
 ```
 
-然后将测试命名为“模型不会编造日期”或“海报满足可读性要求”。
+Then name the tests "the model will not invent dates" or "the poster meets readability requirements."
 
-**问题**：相反指令也能包含相同词语，“禁止缩小字号”和“请缩小字号”都会通过第二个断言；等价改写却可能失败。测试约束了作者用词，没有验证模型行为。
+**Problem:** Opposite instructions can contain the same words: both "Do not reduce the font size" and "Please reduce the font size" pass the second assertion; equivalent rewordings may fail. These tests constrain the author's wording without validating model behavior.
 
-**改法**：模板测试检查插值和消息角色；语义要求通过代表性输入/输出评估。例如输入未给日期时检查模型是否保持未知，海报可读性检查实际生成结果。没有运行模型时明确说明语义效果未验证，不用关键词断言补足。
+**Fix:** Template tests check interpolation and message roles; semantic requirements need evaluation on representative inputs/outputs. For example, when no date is provided, check whether the model keeps it unknown; poster readability requires checking actual generated results. Without running a model, explicitly state that semantic effects are unverified rather than substituting keyword assertions.
 
-**判断边界**：`Contains` 本身不是错。验证已知变量确实插入、敏感字段未发送，可能是合理的确定性测试；问题是拿自然语言片段的存在代替语义符合度。
+**Boundary:** `Contains` is not inherently wrong. Checking that known variables were inserted or sensitive fields were not sent can be a reasonable deterministic test; the problem is substituting the presence of natural-language fragments for semantic compliance.
 
-## 3. 测试能力越界：把结构与流程通过当作效果保证
+## 3. Exceeding test capabilities: Treating structural and workflow passes as effectiveness guarantees
 
-**反例**
+**Counterexamples**
 
-- prompt 有 `<input>` 和 `</input>`，因此宣称“已防止提示注入”。
-- schema 校验通过，因此宣称“事实正确”。
-- prompt 写了“输出前自行检查”，因此宣称“有可靠的质量校验”。
-- Fake LLM 返回正确分类，因此宣称“提示词分类准确”。
+- The prompt has `<input>` and `</input>`, so claim "prompt injection has been prevented."
+- Schema validation passes, so claim "facts are correct."
+- The prompt says "check yourself before output," so claim "reliable quality validation exists."
+- A fake LLM returns the correct category, so claim "the prompt classifies accurately."
 
-**问题**：这些分别最多证明标签存在、结构合法、指令存在或程序能处理给定分类，不证明所声称的行为。内部自检可以是生成提示，但不是可观测的验证器。
+**Problem:** At most, these prove tags exist, structure is valid, an instruction exists, or the program can handle the given category—not the claimed behavior. Internal self-checking can be generation guidance but is not an observable validator.
 
-**改法**：为每个测试明确输入、实际执行组件和可观察断言。程序保护用确定性测试，模型行为用独立评估；安全保证还需权限控制等代码边界。不要通过测试名称、文档或完成报告扩大证据范围。
+**Fix:** Specify each test's inputs, components actually executed, and observable assertions. Use deterministic tests for programmatic safeguards and independent evaluations for model behavior; security guarantees also require code boundaries such as permission controls. Do not inflate evidence through test names, documentation, or completion reports.
 
-## 4. Fixture 自相矛盾：无数据场景却注入肯定答案
+## 4. Contradictory fixtures: Injecting affirmative answers into no-data scenarios
 
-**反例**
+**Counterexample**
 
 ```text
-输入事实：设备列表为空，服务记录为空。
-Fake LLM：发现两台离线设备，本期已完成三次服务。
-测试：只检查页面包含“暂无记录”，结果通过。
+Input facts: The device list is empty; service records are empty.
+Fake LLM: Two offline devices were found; three services were completed this period.
+Test: Checks only that the page contains "No records"; passes.
 ```
 
-**问题**：页面可能同时显示空数据提示和虚构结论。测试数据自身的矛盾掩盖了缺陷；共享一个“成功答案”不适合所有场景。
+**Problem:** The page may display both an empty-data notice and fabricated conclusions. Contradictory test data hides defects; one shared "successful answer" does not suit every scenario.
 
-**改法**：普通流程测试使用与场景一致的 fake，并检查送入模型的事实数据及实际渲染结果。如果故意注入错误模型答案，应将它设为负例，说明测试的是拒绝、降级还是当前未防护的边界，而不是普通成功路径。Fake 可以证明编排行为，不能证明真实模型会保持事实一致。
+**Fix:** Ordinary workflow tests use scenario-consistent fakes and check the factual data sent to the model and actual rendered results. If deliberately injecting an incorrect model answer, make it a negative case and explain whether it tests rejection, fallback, or a currently unprotected boundary—not a normal success path. Fakes can prove orchestration behavior, not that real models remain factually consistent.
 
-## 5. 合同多头维护：规则、示例、schema、校验器互相冲突
+## 5. Contracts maintained in multiple places: Conflicting rules, examples, schemas, and validators
 
-**反例**
+**Counterexample**
 
 ```text
-Prompt：禁止输出 reason。
-Schema：reason 是必填字符串。
-示例：包含 reason。
-本地校验：reason 可有可无。
+Prompt: Do not output reason.
+Schema: reason is a required string.
+Example: Includes reason.
+Local validation: reason is optional.
 ```
 
-另一个常见例子：规则要求缺失时省略字段，示例却输出空对象。
+Another common example: rules require omitting missing fields, but examples output empty objects.
 
-**问题**：没有唯一、可执行的输出合同。继续追加“务必严格遵守”只会放大冲突；示例还会引导模型偏离文字规则。
+**Problem:** There is no single executable output contract. Adding more "strictly comply" instructions only amplifies conflicts; examples also steer the model away from written rules.
 
-**改法**：先确定业务语义和目标平台可表达的合同，再统一字段是否必填、类型、空值、枚举、条件关系及示例。Schema 负责形状，prompt 负责语义，本地校验处理必要的业务关系；避免在多处重复维护不必要的细节。
+**Fix:** First establish business semantics and a contract expressible by the target platform, then align requiredness, types, empty values, enums, conditional relationships, and examples. Schemas govern shape, prompts govern semantics, and local validation handles necessary business relationships; avoid maintaining unnecessary details redundantly.
 
-**验证**：让正反例通过实际 schema 与本地校验，检查预期是否一致；人工核对 prompt/示例的语义。不要再靠相同关键词证明合同一致。详见 [结构化响应](../interfaces/structured-output.md)。
+**Verification:** Run positive and negative cases through the actual schema and local validation, checking expectations agree; manually review prompt/example semantics. Do not prove contract consistency with matching keywords again. See [Structured responses](../interfaces/structured-output.md).
 
-## 6. 无依据地补齐：为具体、完整或凑数而鼓励推测
+## 6. Unsupported completion: Encouraging guesses for specificity, completeness, or quotas
 
-**反例**
+**Counterexamples**
 
-- “用户没给截止日期，就按紧急程度补一个。”
-- “无论材料多少，必须给出五个问题和五条建议。”
-- “必须提及某类风险，并给出处理频率。”
+- "If the user did not provide a deadline, add one based on urgency."
+- "Regardless of how much material exists, always provide five issues and five recommendations."
+- "You must mention a particular risk category and give a handling frequency."
 
-**问题**：模型可能把推测写成事实，为凑数量制造问题，或输出不适用的建议。“具体”不是事实依据，措辞更强也不能补足缺失信息。
+**Problem:** The model may state guesses as facts, manufacture issues to meet quotas, or offer inapplicable recommendations. "Specific" is not factual evidence, and stronger wording cannot supply missing information.
 
-**改法**：抽取任务保留未知；建议任务先确认业务是否授权推断，并明确区分已知事实和建议值。允许有依据时少写、无额外建议时返回空数组；必要的固定输出规模需定义证据不足时如何表达，不靠虚构填满。
+**Fix:** Extraction tasks preserve unknowns; recommendation tasks first confirm whether the business authorizes inference and clearly distinguish known facts from suggested values. Allow fewer items when supported and empty arrays when no additional recommendations exist; necessary fixed output sizes require a defined way to express insufficient evidence, not invented filler.
 
-**验证**：覆盖缺失、含糊、无适用事项和多来源冲突；需要判断推断权限时先问业务方。不要因为看到“推断”就一概删除已批准的推荐功能。
+**Verification:** Cover missing, ambiguous, inapplicable, and conflicting-source cases; ask business stakeholders first when inference permissions require a decision. Do not categorically remove approved recommendation features merely because "inference" appears.
 
-## 7. 约束没有消费者：把格式偏好固化成必要合同
+## 7. Constraints without consumers: Turning format preferences into mandatory contracts
 
-**反例**
+**Counterexample**
 
 ```text
-必须输出单行紧凑 JSON，键必须严格按 A、B、C 排列。
+Output must be single-line compact JSON, with keys strictly ordered A, B, C.
 ```
 
-实际消费者却是忽略空白与键顺序的普通 JSON 解析器，测试还锁定提示词是否出现“单行”“按顺序”。
+Yet the actual consumer is an ordinary JSON parser that ignores whitespace and key order, and tests lock in whether the prompt contains "single-line" and "in order."
 
-**问题**：加入与任务正确性无关的要求，增加维护负担；“仅输出 JSON”不意味着还必须单行或固定键顺序。
+**Problem:** Requirements irrelevant to task correctness add maintenance burden; "JSON only" does not additionally require a single line or fixed key order.
 
-**改法**：逐条问“谁消费这个约束，不满足会破坏什么”。没有依据的去掉；如果流式协议、展示顺序、签名或历史兼容合同确实依赖它，就保留并测试实际消费行为，不仅测试指令文案。
+**Fix:** Ask of each constraint, "Who consumes it, and what breaks if it is unmet?" Remove unsupported constraints; if a streaming protocol, display order, signature, or legacy compatibility contract genuinely depends on it, retain it and test actual consumption behavior, not merely instruction wording.
 
-## 保留有用测试，不以另一种口号替代判断
+## Retain useful tests; do not replace judgment with another slogan
 
-| 测试 | 能证明的内容 | 不能据此声称 |
+| Test | What it can prove | What it cannot justify claiming |
 | --- | --- | --- |
-| 插值、消息角色和字段投影 | 数据进入预期位置，不混入其他角色或字段 | 模型必然抵抗注入 |
-| Prompt SHA 与文件一致 | 审计引用准确追踪实际字节 | 提示词更有效 |
-| Golden snapshot | 显示并约束已明确接受的渲染/字节变化 | 文案语义正确、无需评审 |
-| 解析和 schema 正反例 | 类型、字段、格式及实际约束按预期执行 | 内容真实或合理 |
-| Fake LLM 与副作用测试 | 给定响应下的错误处理、映射和写入行为 | 模型能推导出该响应 |
-| 真实模型保留样本评估 | 指定模型、设置和样本下的观察结果 | 对所有输入和未来模型均成立 |
+| Interpolation, message roles, field projection | Data enters intended locations without mixing other roles or fields | The model necessarily resists injection |
+| Prompt SHA matches file | Audit references accurately track actual bytes | The prompt is more effective |
+| Golden snapshot | Displays and constrains explicitly accepted rendering/byte changes | Copy is semantically correct and needs no review |
+| Parsing and positive/negative schema cases | Types, fields, formats, and actual constraints work as expected | Content is true or reasonable |
+| Fake LLM and side-effect tests | Error handling, mapping, and writes for a given response | The model can derive that response |
+| Real-model held-out-sample evaluation | Observations for specified models, settings, and samples | Results hold for all inputs and future models |
 
-评审时按“反例 → 实际影响 → 应由哪一层解决 → 如何验证”报告，区分确定缺陷、覆盖不足和业务取舍。不要全删字符串断言或 snapshot，也不要为纯措辞变更新建镜像文本测试。效果评估与未验证事项的记录方式见 [评估与迭代](evaluation.md)。
+Report reviews as "counterexample → actual impact → responsible layer → verification," distinguishing definite defects, coverage gaps, and business trade-offs. Do not delete all string assertions or snapshots, or create mirror-text tests for wording-only changes. See [Evaluation and iteration](evaluation.md) for recording effectiveness evaluations and unverified items.

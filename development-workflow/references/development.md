@@ -1,20 +1,20 @@
-# 实施与提交
+# Implementation and Commits
 
-改动范围控制、提交前自检，以及如何报告完成情况。主流程见 [开发流程指南](../SKILL.md)。
+Scope control, pre-commit checks, and reporting completion. See the [Development Workflow Guide](../SKILL.md) for the main workflow.
 
-## 改动范围控制
+## Scope Control
 
-一个分支只承载一个逻辑主题。落到操作层面：
+Each branch covers only one logical topic. In practice:
 
-- 只改与当前任务相关的文件。顺手修的无关问题另开分支，或明确提出来征得同意。
-- 不提交别人的改动。工作区里出现非本任务的修改时，先判断来源，不要一起 `git add`。
-- 不默认使用 `git add .`。逐文件添加，或在 `git status --short` 确认全部改动都属于本次任务后才整体添加。
-- 不删除、格式化或重构与任务无关的代码来“顺手清理”。
-- 不为了推进任务而修改项目配置、CI、依赖版本或忽略规则——除非任务本身要求。
+- Change only files relevant to the current task. Fix unrelated issues on a separate branch, or explicitly raise them and obtain consent.
+- Do not commit other people's changes. If the workspace contains changes outside this task, determine their source first; do not include them in `git add`.
+- Do not use `git add .` by default. Add files individually, or add everything only after `git status --short` confirms that all changes belong to this task.
+- Do not delete, format, or refactor unrelated code as incidental cleanup.
+- Do not change project configuration, CI, dependency versions, or ignore rules just to move the task forward—unless the task itself requires it.
 
-需要改动范围超出预期的情形（例如修 bug 必须动到公共接口）：先说明为什么，再动手；不要静默扩大改动面。
+When the scope needs to exceed expectations (for example, fixing a bug requires changing a public interface), explain why before acting; do not silently expand the scope.
 
-## 提交前自检
+## Pre-Commit Checks
 
 ```bash
 git status --short
@@ -23,30 +23,30 @@ git add <relevant-files>
 git diff --cached
 ```
 
-检查清单：
+Checklist:
 
-- 暂存内容与 `git status` 报告一致，没有漏加或误加。
-- 差异里没有调试残留：临时 `print` / `console.log`、注释掉的旧代码、写死的本地路径或测试账号。
-- 没有意外提交生成物、依赖目录、缓存或本地环境文件；确认它们确实被忽略规则覆盖。
-- 改动实现的是任务要求，没有夹带未要求的功能或抽象。
-- 新增代码去掉了本次修改引入的死代码；未触碰的既有代码保持原样。
+- Staged content matches what `git status` reports, with no missing or mistakenly added changes.
+- The diff contains no debugging leftovers: temporary `print` / `console.log` statements, commented-out old code, hard-coded local paths, or test accounts.
+- Generated artifacts, dependency directories, caches, and local environment files are not accidentally committed; confirm that ignore rules actually cover them.
+- The changes implement the task requirements without adding unrequested features or abstractions.
+- Dead code introduced by this change has been removed from the new code; untouched existing code remains unchanged.
 
-## 提交信息
+## Commit Messages
 
 ```text
 <type>[optional scope][!]: <description>
 ```
 
-- `type` 用项目规范的类型，没有规范时用 `feat`、`fix`、`docs`、`refactor`、`perf`、`test`、`build`、`ci`、`style`、`chore`。
-- `scope` 可选，指向模块或子系统，例如 `api`、`parser`、`auth`。
-- `description` 用祈使句、小写开头、不加句号，说明实际变化。
-- 一个提交一个逻辑改动。把“重构 + 顺手改行为”拆成两个提交。
-- 破坏性变更加 `!`，并在 footer 补 `BREAKING CHANGE:` 说明迁移方式。
-- 关联任务或 issue 放 footer，例如 `Refs: #123`。
+- Use the project's prescribed values for `type`; if none exist, use `feat`, `fix`, `docs`, `refactor`, `perf`, `test`, `build`, `ci`, `style`, or `chore`.
+- `scope` is optional and identifies a module or subsystem, such as `api`, `parser`, or `auth`.
+- Write `description` in the imperative, starting with a lowercase letter and without a period, describing the actual change.
+- One logical change per commit. Split "refactoring + incidental behavior changes" into two commits.
+- Add `!` for breaking changes and a `BREAKING CHANGE:` footer explaining how to migrate.
+- Put related tasks or issues in the footer, for example, `Refs: #123`.
 
-避免 `update stuff`、`fix issue`、`changes`、`wip` 这类无法用于生成 CHANGELOG 的描述。
+Avoid descriptions such as `update stuff`, `fix issue`, `changes`, or `wip` that cannot be used to generate a CHANGELOG.
 
-示例：
+Examples:
 
 ```text
 feat(auth): add passkey login
@@ -56,30 +56,30 @@ refactor(parser): simplify token handling
 feat(api)!: remove deprecated user endpoint
 ```
 
-开发分支上可以有多个提交，不必强行压成一个；Squash Merge 会在集成分支上合并它们。但每个提交都应能独立说明，便于 review 和自己的回滚。
+A development branch can have multiple commits; there is no need to force them into one, since Squash Merge combines them on the integration branch. However, each commit should be understandable on its own to support review and your own rollbacks.
 
-## 提交时机
+## When to Commit
 
-- 完成一个可说明的逻辑单元就提交，不要把一整天的改动堆成一次提交。
-- 复杂改动先提交一个可运行的状态再继续，避免长时间只有一个巨大的未提交 diff。
-- 提交前不必每次跑全量测试，但提交应处于可运行状态；验证强度按 [测试与验证](testing.md) 分级。
-- 不要为了“让提交干净”而 stash 掉用户不想丢的改动，或用 `reset --hard` 清理工作区。
+- Commit when a coherent logical unit is complete; do not pile an entire day's changes into one commit.
+- For complex changes, commit a runnable state before continuing, rather than leaving a huge uncommitted diff for a long time.
+- Full tests need not run before every commit, but commits should be in a runnable state; choose verification intensity using the levels in [Testing and Verification](testing.md).
+- Do not stash changes the user wants to keep or clean the workspace with `reset --hard` just to "make the commit clean."
 
-## 报告完成情况
+## Reporting Completion
 
-用户看不到你的终端，报告要能替代他们亲自运行：
+The user cannot see your terminal, so the report should stand in for running the commands themselves:
 
-- 说清楚实际做了什么，而不是打算做什么。
-- 列出真正运行过的命令及其结果；没运行的验证不要说成通过。
-- 说明改动了哪些文件，以及是否有偏离默认流程的地方（例如没建分支、用了其他合并策略）。
-- 遇到阻塞时说明阻塞点和已尝试的办法，不要把部分完成描述成全部完成。
-- 无法验证的部分明确标注“未验证”，并说明原因和残余风险。
+- Explain what was actually done, not what you intend to do.
+- List the commands actually run and their results; do not describe unrun verification as passing.
+- State which files changed and whether there were deviations from the default workflow (such as not creating a branch or using another merge strategy).
+- When blocked, explain the blocker and what you tried; do not describe partial completion as full completion.
+- Explicitly mark anything that could not be verified as "not verified," explaining why and the remaining risks.
 
-需要避免的表述：
+Statements to avoid:
 
-- “测试通过”但实际只跑了构建。
-- “已验证”但只做了肉眼检查。
-- 把计划中的步骤写成已完成。
-- 有失败项却只报成功项。
+- "Tests passed" when only a build was run.
+- "Verified" when only a visual inspection was performed.
+- Describing planned steps as completed.
+- Reporting only successes when some checks failed.
 
-如实报告未完成项比宣称全绿更省用户的时间。
+Honestly reporting unfinished items saves the user more time than claiming everything passed.

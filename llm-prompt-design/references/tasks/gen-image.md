@@ -1,80 +1,80 @@
-# `gen_image`：用视觉目标组织提示词
+# `gen_image`: Organize prompts around visual goals
 
-本页只用于**生成或编辑图片**；读图后回答文字问题请用 [非生图任务](non-gen-image.md)。先确定用途、画幅、是否有输入/参考图、需要保留的内容和验收方式。图像模型对文字、精确位置、身份与局部编辑的遵从程度各异，实测比堆叠形容词重要。参考 [OpenAI image prompting](https://developers.openai.com/api/docs/guides/image-prompting)、[Google Gemini 图片生成](https://ai.google.dev/gemini-api/docs/image-generation)。
+This page is only for **generating or editing images**; for answering textual questions about images, use [Non-image-generation tasks](non-gen-image.md). First determine the purpose, aspect ratio, whether input/reference images exist, content to preserve, and acceptance method. Image models vary in adherence to text, exact positioning, identity, and local edits; actual testing matters more than adjective stacking. See [OpenAI image prompting](https://developers.openai.com/api/docs/guides/image-prompting) and [Google Gemini image generation](https://ai.google.dev/gemini-api/docs/image-generation).
 
-## 公式是槽位清单，不是必须填满的咒语
+## The formula is a slot checklist, not an incantation to fill completely
 
 ```text
 [Subject + Action/Details] + [Setting/Environment] + [Lighting]
 + [Composition/Angle] + [Style/Medium] + [Camera/Film/Technical] + [Parameters]
 ```
 
-| 槽位 | 解决什么 | 什么时候可省略 |
+| Slot | What it addresses | When it can be omitted |
 | --- | --- | --- |
-| 主体 + 动作/细节 | 谁或什么、数量、材质、姿态 | 主体通常不可省；不确定细节可留给模型探索 |
-| 场景/环境 | 前后景、背景和物件关系 | 纯色背景或透明切图可简写 |
-| 光线 | 阴影、情绪、材质呈现 | 与用途无关时不强加 |
-| 构图/视角 | 主体位置、留白、景别 | 构图不敏感的探索稿可省 |
-| 风格/媒介 | 照片、版画、粉彩、插画等 | 已由参考图稳定规定时可简化 |
-| 相机/胶片/技术语言 | 浅景深、俯视、微距等外观线索 | 插画/示意图通常不必写；型号与焦距不是精确模拟承诺 |
-| 参数 | 目标平台支持的尺寸、比例、质量、透明等 | **不要写成万能 prompt 后缀**；优先在 API/工具配置中设置，按模型能力核对 |
+| Subject + action/details | Who or what, quantity, material, pose | The subject is usually essential; uncertain details can be left for model exploration |
+| Setting/environment | Foreground/background and relationships among objects | A solid background or transparent cutout can be described briefly |
+| Lighting | Shadows, mood, material appearance | Do not impose it when irrelevant to the purpose |
+| Composition/angle | Subject placement, whitespace, shot scale | Can be omitted for exploratory drafts where composition is not critical |
+| Style/medium | Photography, printmaking, pastel, illustration, etc. | Can be simplified when a reference image already establishes it consistently |
+| Camera/film/technical language | Appearance cues such as shallow depth of field, overhead view, macro | Usually unnecessary for illustrations/diagrams; camera models and focal lengths do not promise exact simulation |
+| Parameters | Dimensions, aspect ratio, quality, transparency, etc. supported by the target platform | **Do not write them as a universal prompt suffix**; prefer API/tool configuration and check model capabilities |
 
-从“主体 + 用途 + 构图”写短基线，结果缺什么再补相应槽位；互相冲突的风格、无关的镜头参数和长串“高清大师级”不是通用加分项。若平台有专门的 negative prompt、mask、seed 或参考图接口，按其文档使用；不要假设每个模型都支持同名参数或完全可复现。必要时文字也可描述应排除的可见元素。
+Start with a short "subject + purpose + composition" baseline, then add slots for what results lack; conflicting styles, irrelevant lens parameters, and long strings of "high-definition masterpiece" are not universal improvements. If the platform provides dedicated negative prompt, mask, seed, or reference-image interfaces, follow its documentation; do not assume every model supports identically named parameters or full reproducibility. Prose may also describe visible elements to exclude when necessary.
 
-## 方案选择与任务示例
+## Strategy selection and task examples
 
-### 1. 商品摄影：从泛泛好看到指定版面
+### 1. Product photography: From generic attractiveness to a specified layout
 
-**基线：**“拍一个好看的杯子。”
+**Baseline:** "Take a nice picture of a cup."
 
-**改进的提示词：**
-
-```text
-为电商横幅生成哑光白色陶瓷杯的写实产品照。杯子位于画面右侧，
-左半边保留干净的暖灰色留白供后期排字；桌面浅灰，柔和侧窗光，
-三分之四视角，可见杯口和把手。画面中只有一个杯子，不出现文字或商标。
-```
-
-**选择/预期效果：**主体、材质、数量和留白比罗列相机品牌更便于判断是否符合用途。平台支持时单独设置横向画幅；不能保证精确像素布局。检查杯子数量、把手、可用留白、瑕疵；若要透明切图，还要检查真实 alpha 通道而非画出的棋盘格。
-
-### 2. 风格化插画：强化媒介，不机械填摄影槽
+**Improved prompt:**
 
 ```text
-儿童绘本单幅插画：一只橘猫在雨后的公交站等车，手拿一把过大的蓝伞。
-水粉纸张质感，柔和蓝灰与暖橙对比，视线与伞的轮廓清楚，
-背景街景简化，无文字。
+Generate a realistic product photo of a matte white ceramic cup for an e-commerce banner. Place the cup on the right,
+leaving clean, warm-gray whitespace on the left half for text added later; use a light-gray tabletop, soft side-window light,
+and a three-quarter view showing the rim and handle. Include only one cup, with no text or logos.
 ```
 
-**选择/预期效果：**媒介、色彩和视觉重点帮助系列画面保持方向；无需镜头毫米数。若已有角色参考图，明确它只提供角色外形而不是背景。检查主体身份、伞数量、轮廓和系列一致性；过窄的配色/动作要求可能降低意外创意。
+**Choice/expected effects:** Subject, material, quantity, and whitespace make fitness for purpose easier to judge than listing camera brands. Set landscape dimensions separately when supported; exact pixel layouts cannot be guaranteed. Check cup count, handle, usable whitespace, and defects; for a transparent cutout, also check for a real alpha channel rather than a drawn checkerboard.
 
-### 3. 海报与图中文字：明确位置，但独立校字
+### 2. Stylized illustration: Emphasize the medium without mechanically filling photography slots
 
 ```text
-为社区开放日制作竖版海报：顶部以清晰大字写“周六开放日”，
-中间是一张简洁的街区花园插画，底部留白供后期填写地址。
-仅出现引号内的标题，不添加其他文字。
+A single illustration for a children's picture book: an orange cat waits at a bus stop after rain, holding an oversized blue umbrella.
+Gouache paper texture, soft blue-gray contrasted with warm orange, a clear gaze direction and umbrella outline,
+simplified background streetscape, no text.
 ```
 
-**选择/预期效果：**引号、文字层级、位置和额外文字限制让需求可检验；文字仍可能错字、变形或被遗漏。必须准确的活动信息或商标，优先考虑生成无字底图后用排版软件叠加；逐字验收，不把“尽量准确”当保证。
+**Choice/expected effects:** Medium, colors, and visual emphasis help keep a series aligned; lens focal lengths are unnecessary. If a character reference image exists, specify that it supplies character appearance only, not the background. Check subject identity, umbrella count, outline, and series consistency; overly narrow color/action requirements may reduce unexpected creativity.
 
-### 4. 参考图编辑：变化与保持分开
+### 3. Posters and image text: Specify placement, but proofread independently
 
 ```text
-输入图 A 是待编辑的商品照。只把背景改为暖灰色无缝摄影棚背景，
-保留商品外形、标签文字、位置、视角和原有高光；不新增配件或水印。
+Create a portrait poster for a community open day: write "Saturday Open Day" in large, clear text at the top,
+place a simple neighborhood garden illustration in the middle, and leave whitespace at the bottom for an address added later.
+Include only the quoted title and no other text.
 ```
 
-**选择/预期效果：**给参考图指定角色，并把“仅改背景”与保留列表分开，预期减少主体漂移；需要实际传入图片，精细局部变化可用平台支持的遮罩。检查标签逐字、边缘、光线和背景；若模型无法稳定保持，改走图层/图像编辑流程。
+**Choice/expected effects:** Quotes, text hierarchy, placement, and restrictions on extra text make requirements testable; text may still be misspelled, distorted, or omitted. For event information or logos that must be exact, prefer generating a text-free background and overlaying text in layout software; check every character rather than treating "as accurate as possible" as a guarantee.
 
-### 5. 信息图/示意图：先验事实，再验画面
+### 4. Reference-image editing: Separate changes from preservation
 
 ```text
-画一个三步的植物浇水示意图，从左到右分别为“检查土壤”“适量浇水”
-“观察排水”；每步一个简单图标，箭头只连接相邻步骤，留足文字空间。
+Input image A is the product photo to edit. Change only the background to a warm-gray seamless studio backdrop,
+preserving the product's shape, label text, position, viewing angle, and existing highlights; add no accessories or watermarks.
 ```
 
-**选择/预期效果：**数量、顺序和连接关系比泛称“专业信息图”更可验证；模型仍可能画错文字/箭头或事实。对专业流程先核对内容，再逐项检查图标对应和文字；精确图表宜用可编辑排版/矢量工具而非只靠生成。
+**Choice/expected effects:** Assign a role to the reference image and separate "background only" from the preservation list, with the expectation of reducing subject drift. The image must actually be supplied; fine local changes can use platform-supported masks. Check label text character by character, edges, lighting, and background; if the model cannot preserve these consistently, use a layer-based/image-editing workflow instead.
 
-## 迭代和接口边界
+### 5. Infographics/diagrams: Validate facts before visuals
 
-每轮只改一两项：先看主体/构图，再看文字与细节；保存可比较的 prompt、输入图角色、实际模型及支持的尺寸/质量设置。生成与编辑是不同调用场景，不要只因说“保持原图”就假定模型收到原图。输出挑选可看构图符合率、文字正确率、编辑保留率和人工通过率；详见 [评估](../engineering/evaluation.md)。关于参数属于哪一层见 [平台差异](../engineering/provider-compatibility.md)；公式是本 skill 的组织工具，不声称出自任何一家官方文档。
+```text
+Draw a three-step plant-watering diagram, left to right: "Check soil," "Water appropriately,"
+"Observe drainage"; one simple icon per step, arrows connecting only adjacent steps, and ample text space.
+```
+
+**Choice/expected effects:** Count, order, and connections are more verifiable than "professional infographic"; the model may still get text/arrows or facts wrong. For specialized processes, verify content first, then check icon correspondence and text item by item; use editable layout/vector tools for precise charts rather than relying solely on generation.
+
+## Iteration and interface boundaries
+
+Change only one or two things per round: inspect subject/composition first, then text and details; save comparable prompts, input-image roles, the actual model, and supported dimension/quality settings. Generation and editing are different invocation scenarios; "preserve the original" does not mean the model received the original. Output selection can consider composition compliance, text accuracy, edit preservation, and human acceptance rates; see [Evaluation](../engineering/evaluation.md). For which layer owns parameters, see [Platform differences](../engineering/provider-compatibility.md); the formula is this skill's organizational tool and is not claimed to originate in any official documentation.

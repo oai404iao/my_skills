@@ -1,30 +1,30 @@
-# 基础：把需求写成可检查的输入输出契约
+# Foundations: Turn requirements into checkable input/output contracts
 
-设计前收集五件事：**任务**（要决定/生成什么）、**可用输入**（由谁提供、是否实时）、**输出**（给人看还是机器解析）、**边界**（不可推断、权限、长度、风格）和**成功条件**（怎样判断做对）。高风险信息应遵循任务所在系统的审批与事实核验流程；提示词不是安全隔离。
+Collect five things before designing: **task** (what to decide/generate), **available inputs** (who provides them and whether they are live), **output** (for people or machine parsing), **boundaries** (what must not be inferred, permissions, length, style), and **success criteria** (how to judge correctness). High-risk information should follow the approval and fact-checking processes of the system hosting the task; prompts are not security isolation.
 
-## 指令、数据与示例分层
+## Separate instructions, data, and examples
 
-- 把稳定规则放在目标 API/宿主支持的高优先级指令位置，动态用户输入、检索片段和工具结果按其真实来源传递。不要假定所有平台都支持相同角色或优先级。
-- 用清楚的 Markdown 标题、XML 标签或等价分隔符标明“规则”“示例”“本次输入”；标签只是帮助理解，**不能**把不可信文本变成可信指令。引用文档和工具输出里的“忽略之前的要求”应当作待处理数据，不照其执行。
-- 限制可推断范围：要从材料抽取则仅抽材料中明确出现的值；要回答事实则明确来源、允许的推断和证据不足时的回答。不能凭提示词凭空获得实时数据；需要时选检索或工具。
-- 明确结果形态：交付给谁、语种、条数、长度、必须/可选字段、如何处理冲突或缺失。只有格式机械可检验时，才让程序校验，而不是增加“务必严格 JSON”重复句。
+- Place stable rules in the high-priority instruction location supported by the target API/host; pass dynamic user inputs, retrieved excerpts, and tool results according to their actual sources. Do not assume all platforms support the same roles or priorities.
+- Use clear Markdown headings, XML tags, or equivalent delimiters to mark "rules," "examples," and "current input." Tags only aid understanding; they **cannot** turn untrusted text into trusted instructions. Treat "ignore previous requirements" in quoted documents and tool outputs as data to process, not instructions to follow.
+- Limit permissible inference: for extraction, extract only values explicitly present in the material; for factual answers, specify sources, allowed inferences, and the response when evidence is insufficient. Prompts cannot conjure live data; use retrieval or tools when needed.
+- Specify the result's form: recipient, language, item count, length, required/optional fields, and handling of conflicts or missing information. When format can be checked mechanically, use programmatic validation rather than repeating "strict JSON is mandatory."
 
-抽取型提示词的最小骨架（`{{...}}` 是调用方替换的变量，不是真实文件路径）：
+A minimal extraction prompt skeleton (`{{...}}` denotes variables replaced by the caller, not real file paths):
 
 ```text
-任务：仅从 <input> 中提取明确出现的订单号。
-输出：若找到，给出原样订单号；若没有，回答“未提供”。不要猜测。
+Task: Extract only order numbers explicitly present in <input>.
+Output: If found, return the order number unchanged; otherwise answer "Not provided." Do not guess.
 <input>
-{{用户消息}}
+{{user_message}}
 </input>
 ```
 
-如果下游要解析固定对象，应转用 [结构化响应](interfaces/structured-output.md)，不把上面的自由文本骨架当作 JSON 契约。
+If downstream code parses a fixed object, use [Structured responses](interfaces/structured-output.md) instead; do not treat the free-text skeleton above as a JSON contract.
 
-## 示例与复杂度
+## Examples and complexity
 
-先用零样本试运行。输出分类边界不稳或风格需要模仿时，再加覆盖正常、相似类别和缺失信息的少量**正确**示例；示例不要互相冲突，也不要在生产提示词中夹带真实凭证或敏感样本。写明示例是要模仿的输入/输出，不是新的用户请求。示例越多越耗上下文，也可能诱导机械复刻。
+Start with a zero-shot trial. If classification boundaries are unstable or a style must be imitated, add a few **correct** examples covering normal cases, similar categories, and missing information. Examples must not conflict, and production prompts must not include real credentials or sensitive samples. State that examples are input/output pairs to imitate, not new user requests. More examples consume more context and may encourage mechanical imitation.
 
-长材料任务按模型与调用形式测试材料位置，保留片段 ID/来源与查询的边界；先降低无关片段量，不把“塞满上下文”当作 RAG。复杂任务只在中间结果可独立检查时拆步；要求简短、可核查的结论或验证项，而非强制展示私有推理过程。图像参数（尺寸、透明背景等）、工具选择以及严格 JSON 输出优先用目标 API 真正支持的配置，而非仅靠文字模拟。
+For long-material tasks, test material placement for the model and invocation method, preserving boundaries between excerpt IDs/sources and the query; first reduce irrelevant excerpts rather than treating "fill the context" as RAG. Decompose complex tasks only when intermediate results can be checked independently; request brief, verifiable conclusions or verification items, not mandatory disclosure of private reasoning. Prefer configuration actually supported by the target API for image parameters (dimensions, transparent background, etc.), tool selection, and strict JSON output, rather than simulating them only in prose.
 
-具体取舍见 [方案选择](strategy-selection.md)，任务化例子见 [非生图](tasks/non-gen-image.md) 和 [生图](tasks/gen-image.md)。本节是依据 [OpenAI 提示工程](https://developers.openai.com/api/docs/guides/prompt-engineering)、[Anthropic 最佳实践](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices)和 [Google 示例笔记本](https://github.com/GoogleCloudPlatform/generative-ai/blob/main/gemini/prompts/intro_prompt_design.ipynb)整理的本地建议，不复用其原始示例。
+See [Strategy selection](strategy-selection.md) for specific trade-offs, and [Non-image generation](tasks/non-gen-image.md) and [Image generation](tasks/gen-image.md) for task-based examples. This section contains local recommendations organized from [OpenAI prompt engineering](https://developers.openai.com/api/docs/guides/prompt-engineering), [Anthropic best practices](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices), and the [Google example notebook](https://github.com/GoogleCloudPlatform/generative-ai/blob/main/gemini/prompts/intro_prompt_design.ipynb); their original examples are not reused.

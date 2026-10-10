@@ -1,41 +1,41 @@
-# 版本与发布
+# Versioning and Releases
 
-按需读取。任务需要对外交付、要在集成分支打发布标记，或项目维护 CHANGELOG 时，按本参考执行。
+Read as needed. Follow this reference when the task requires external delivery, a release tag on the integration branch, or maintaining the project's CHANGELOG.
 
-约定来自社区通行实践：[Semantic Versioning 2.0.0](https://semver.org/)、[Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/)、[Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/)，以及 release-please、semantic-release、changesets 这几类工具的主流做法。项目已有的发布流程、版本方案（含 CalVer）和发布记录优先于本参考。
+These conventions come from common community practices: [Semantic Versioning 2.0.0](https://semver.org/), [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/), [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/), and mainstream practices in tools such as release-please, semantic-release, and changesets. The project's existing release process, versioning scheme (including CalVer), and release records take precedence over this reference.
 
-## 版本号决策
+## Choosing a Version Number
 
-格式 `MAJOR.MINOR.PATCH`：
+Format: `MAJOR.MINOR.PATCH`:
 
-| 变更 | 版本位 | 判断依据 |
+| Change | Version Component | Basis |
 | --- | --- | --- |
-| 不兼容的 API 或行为变更 | MAJOR | 提交带 `!` 或 `BREAKING CHANGE:` footer |
-| 向后兼容的新功能 | MINOR | `feat` |
-| 向后兼容的修复或内部改进 | PATCH | `fix`、`perf`、`refactor`、`docs` 等 |
+| Incompatible API or behavior changes | MAJOR | Commit includes `!` or a `BREAKING CHANGE:` footer |
+| Backward-compatible new features | MINOR | `feat` |
+| Backward-compatible fixes or internal improvements | PATCH | `fix`, `perf`, `refactor`, `docs`, etc. |
 
-判断看对外契约，不看提交数量或代码量：
+Judge by the external contract, not the number of commits or amount of code:
 
-- 内部重构、脚手架调整、测试补充、文档修正通常是 PATCH，即使改动很大。
-- 修改默认值、收紧校验、改变错误码、删除已废弃的导出，都可能是 MAJOR，即使只有一行。
-- 安全修复按常规规则定级，必要时在 CHANGELOG 的 `Security` 分类下单独说明，但不要借安全为名回避 MAJOR 判断。
-- 多个变更同时发布时取最高位：只要包含一个破坏性变更，就是 MAJOR。
+- Internal refactoring, scaffolding adjustments, added tests, and documentation corrections are usually PATCH changes, even when extensive.
+- Changing defaults, tightening validation, changing error codes, or removing deprecated exports can all be MAJOR changes, even if only one line changes.
+- Classify security fixes by the usual rules, and describe them separately under `Security` in the CHANGELOG when needed; do not use security as a reason to avoid a MAJOR assessment.
+- When releasing multiple changes together, use the highest component: any breaking change makes it MAJOR.
 
-`0.y.z` 阶段：`0.y.z` 中 MINOR 可以包含破坏性变更，PATCH 仍应保持兼容。是否把 `0.x` 的破坏性变更提升成 MAJOR，取决于项目文档的声明；项目没有声明时按此约定，并在发布说明里写清影响。
+During the `0.y.z` stage, MINOR in `0.y.z` may include breaking changes, while PATCH should remain compatible. Whether to promote a breaking change in `0.x` to MAJOR depends on the project's documented policy; if none exists, follow this convention and clearly describe the impact in the release notes.
 
-预发布版本用 `-alpha.1`、`-beta.2`、`-rc.1` 之类的后缀。预发布版本排在对应正式版本之前，且不同时推进多个预发布标识。
+Use suffixes such as `-alpha.1`, `-beta.2`, or `-rc.1` for prereleases. Prereleases precede their corresponding stable versions; do not advance multiple prerelease identifiers simultaneously.
 
-## 版本记录在哪里
+## Where Versions Are Recorded
 
-- 语言的包清单：`package.json`、`pyproject.toml`、`Cargo.toml`、`pom.xml`、`*.gemspec`。
-- 单独的 `VERSION`、`version.go`、`__version__`。
-- 项目文档里的版本徽章或引用。
+- Language package manifests: `package.json`, `pyproject.toml`, `Cargo.toml`, `pom.xml`, and `*.gemspec`.
+- Separate `VERSION`, `version.go`, or `__version__` entries.
+- Version badges or references in project documentation.
 
-发布时同步更新所有记录版本号的位置。只改一处会留下不一致，下游按包清单安装得到的版本和 tag 不同。
+Update every place that records the version number when releasing. Changing only one leaves inconsistencies, with downstream installations from the package manifest receiving a version different from the tag.
 
 ## Tag
 
-在集成分支上打注解 tag：
+Create an annotated tag on the integration branch:
 
 ```bash
 git switch <integration-branch>
@@ -44,21 +44,21 @@ git tag -a v1.4.0 -m "v1.4.0"
 git push <remote> v1.4.0
 ```
 
-规则：
+Rules:
 
-- 用 `-a` 创建注解 tag，不要用轻量 tag。注解 tag 带作者、日期和说明，`git describe` 和多数发布工具依赖这些信息。
-- 命名沿用项目既有格式（`v1.4.0` 或 `1.4.0`），不要混用。
-- tag 指向集成分支上实际发布的那个提交，通常就是本次发布的版本提交。
-- 已推送的 tag 不要移动或覆盖。下游可能已经按它构建；需要修正时发新的 PATCH 版本，而不是改旧 tag。
-- 打错且尚未推送时，直接删除重打：
+- Create annotated tags with `-a`, not lightweight tags. Annotated tags include an author, date, and message; `git describe` and most release tools rely on this information.
+- Follow the project's existing naming format (`v1.4.0` or `1.4.0`); do not mix formats.
+- The tag points to the actual released commit on the integration branch, usually the version commit for this release.
+- Do not move or overwrite pushed tags. Downstream users may already have built from them; issue a new PATCH release for corrections rather than changing an old tag.
+- If a tag is incorrect and has not been pushed, simply delete and recreate it:
   ```bash
   git tag -d v1.4.0
   ```
-- 团队要求签名时用 `git tag -s`，并确认本地签名密钥已配置。
+- Use `git tag -s` when the team requires signing, and confirm that the local signing key is configured.
 
 ## CHANGELOG
 
-按 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 的格式维护，面向使用者而不是面向提交历史：
+Maintain it in [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format, for users rather than commit history:
 
 ```markdown
 ## [Unreleased]
@@ -66,84 +66,84 @@ git push <remote> v1.4.0
 ## [1.4.0] - 2025-03-11
 
 ### Added
-- 支持通过 `--format json` 导出结果
+- Support exporting results with `--format json`
 
 ### Changed
-- 默认超时从 30 秒调整为 10 秒
+- Change the default timeout from 30 seconds to 10 seconds
 
 ### Fixed
-- 修复空响应体导致的解析失败
+- Fix parsing failures caused by empty response bodies
 
 ### Security
-- 升级存在已知漏洞的解析依赖
+- Upgrade a parsing dependency with known vulnerabilities
 ```
 
-要点：
+Key points:
 
-- 分类使用 `Added` / `Changed` / `Deprecated` / `Removed` / `Fixed` / `Security`，不添加自定义分类。
-- 条目写用户可见的变化，不逐条抄提交信息。Squash Merge 让一个 PR/MR 对应一条，正好匹配这种粒度。
-- 每个发布版本一个二级标题，带日期和版本号，最新的在上方。
-- 保留 `Unreleased` 小节，日常改动先记在那里。
-- 破坏性变更单列 `Removed` / `Changed` 并在条目中说明迁移方式。
-- 底部保留版本对比链接（若项目使用）。
+- Use the categories `Added` / `Changed` / `Deprecated` / `Removed` / `Fixed` / `Security`; do not add custom categories.
+- Describe user-visible changes rather than copying commit messages one by one. Squash Merge maps one PR/MR to one entry, matching this granularity.
+- Use one second-level heading per release, with a date and version number, newest first.
+- Keep an `Unreleased` section, recording day-to-day changes there first.
+- List breaking changes separately under `Removed` / `Changed` and explain migration in the entries.
+- Keep version comparison links at the bottom (if the project uses them).
 
-## 发布步骤
+## Release Steps
 
-手动发布的完整顺序：
+The full sequence for a manual release:
 
 ```bash
-# 1. 确认集成分支包含本次全部改动且工作区干净
+# 1. Confirm that the integration branch contains all changes for this release and the workspace is clean
 git -C <main-worktree> switch <integration-branch>
 git -C <main-worktree> pull --ff-only <remote> <integration-branch>
 git -C <main-worktree> status --short
 
-# 2. 更新版本号（包清单、VERSION 等所有记录位置）
+# 2. Update the version number everywhere it is recorded (package manifests, VERSION, etc.)
 
-# 3. 把 Unreleased 的内容移入新的版本小节，更新对比链接
+# 3. Move Unreleased content into a new version section and update comparison links
 
-# 4. 提交版本改动
+# 4. Commit version changes
 git add CHANGELOG.md pyproject.toml
 git commit -m "chore(release): 1.4.0"
 
-# 5. 打注解 tag
+# 5. Create an annotated tag
 git tag -a v1.4.0 -m "v1.4.0"
 
-# 6. 推送集成分支和 tag（tag 可精确推送，避免顺带推送无关 tag）
+# 6. Push the integration branch and tag (push the exact tag to avoid pushing unrelated tags)
 git push <remote> <integration-branch>
 git push <remote> v1.4.0
 ```
 
-推送 tag 前运行项目的构建或打包检查。发布后核对 tag 指向的提交包含版本提交，且 CHANGELOG 的版本号、tag 名和包清单三处一致。
+Run the project's build or packaging checks before pushing the tag. After releasing, confirm that the commit pointed to by the tag includes the version commit, and that the CHANGELOG version number, tag name, and package manifest all agree.
 
-## 自动化方案
+## Automation Options
 
-社区主流有三类，按项目的提交规范和产物形态选择：
+There are three mainstream community approaches; choose based on the project's commit conventions and artifact structure:
 
-- **release-please**：由 Conventional Commits 推断版本位，生成一个“发布 PR”，里面包含版本号和 CHANGELOG 改动；合并该 PR 后创建 tag 和 release。适合希望发布前仍有人工确认的项目，对 GitHub 支持最完整。
-- **semantic-release**：在 CI 上全自动完成版本推断、CHANGELOG 生成、打 tag 和发布。适合提交规范执行严格、希望零人工干预的项目；配置失误会直接影响发布产物，首次接入要先在预发布分支验证。
-- **changesets**：以显式的变更文件描述改动，再由命令汇总版本和 CHANGELOG。适合 monorepo 或多包仓库，需要跨包协调版本时优势明显。
+- **release-please**: Infers the version component from Conventional Commits and generates a "release PR" containing version number and CHANGELOG changes; creates a tag and release after that PR is merged. Suitable for projects that still want human confirmation before releasing, with the most complete support for GitHub.
+- **semantic-release**: Fully automates version inference, CHANGELOG generation, tagging, and publishing in CI. Suitable for projects with strict commit conventions that want no manual intervention; configuration errors directly affect release artifacts, so verify on a prerelease branch when first adopting it.
+- **changesets**: Describes changes in explicit change files, then uses commands to aggregate versions and the CHANGELOG. Suitable for monorepos or multi-package repositories, with clear advantages when coordinating versions across packages.
 
-共同前提是提交信息符合 Conventional Commits——这也是本指南要求提交规范的直接原因。接入自动化前先确认项目历史提交的规范程度，否则自动生成的版本号和 CHANGELOG 会失真。
+The common prerequisite is commit messages following Conventional Commits—the direct reason this guide requires commit conventions. Before adopting automation, check how well the project's historical commits follow the conventions; otherwise, automatically generated version numbers and CHANGELOG entries will be inaccurate.
 
-工具选定后写进项目文档和 CI 配置，不要在同一仓库并行维护两套发布机制。
+After choosing a tool, record it in project documentation and CI configuration; do not maintain two release mechanisms in parallel in the same repository.
 
-## 与合并策略的关系
+## Relationship to the Merge Strategy
 
-- 默认的 Squash Merge 让一个 PR/MR 在集成分支上只留一个提交，正好对应一条 CHANGELOG 条目和一次版本判断。
-- 若项目改用 Rebase Merge 或普通 Merge，集成分支会累积开发分支的中间提交，自动版本推断会把 `wip`、`fix typo` 之类的提交也算进去。此时要么在合并前整理提交，要么改用显式变更文件（changesets 方式）。
-- 合并策略变更后重新检查版本工具的依据来源：从提交信息推断的工具依赖 squash 粒度。
+- The default Squash Merge leaves one commit per PR/MR on the integration branch, matching one CHANGELOG entry and one version decision.
+- If the project switches to Rebase Merge or ordinary Merge, the integration branch accumulates intermediate development branch commits, and automatic version inference also considers commits such as `wip` and `fix typo`. In that case, either tidy commits before merging or switch to explicit change files (the changesets approach).
+- After changing the merge strategy, recheck the versioning tool's source of evidence: tools that infer from commit messages rely on squash granularity.
 
-## 常见错误
+## Common Mistakes
 
-- 版本号改了一处，漏掉包清单或 `__version__`。
-- 用轻量 tag，导致发布工具读不到 tag 说明。
-- 移动或强制覆盖已发布的 tag。
-- CHANGELOG 直接罗列提交信息，或长期不更新，发布时才补写。
-- 破坏性变更只写在提交里，没有出现在 CHANGELOG 和版本位上升级。
-- 在开发分支上打 tag 后合并，导致 tag 指向未进入主干的提交。
-- 自动化接管后仍手工改版本号，造成工具与文件冲突。
+- Updating the version number in one place but missing the package manifest or `__version__`.
+- Using lightweight tags, preventing release tools from reading tag messages.
+- Moving or force-overwriting published tags.
+- Listing commit messages directly in the CHANGELOG, or leaving it stale and filling it in only at release time.
+- Recording breaking changes only in commits, without reflecting them in the CHANGELOG and bumping the appropriate version component.
+- Tagging on the development branch before merging, leaving the tag pointing to a commit that has not reached the mainline.
+- Continuing to update version numbers manually after automation takes over, causing conflicts between the tool and files.
 
-## 官方参考
+## Official References
 
 - [Semantic Versioning 2.0.0](https://semver.org/)
 - [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/)

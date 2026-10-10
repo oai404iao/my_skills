@@ -1,27 +1,27 @@
-# 评估与迭代：效果必须在目标任务上验证
+# Evaluation and iteration: Validate effectiveness on the target task
 
-先固定模型/API、输入集合、工具权限、图像参考、采样设置和下游判定规则；记录当前提示词为基线。每轮只改一类变量（例如标签边界或示例，而非同时换模型与 schema），比较通过率、延迟和成本；随机生成任务尽量用多次输出观察稳定性。没有运行真实模型就写“预期改善”，不要写“提高了 30%”。
+First fix the model/API, input set, tool permissions, image references, sampling settings, and downstream decision rules; record the current prompt as the baseline. Change only one class of variables per round (such as label boundaries or examples, rather than changing both model and schema), and compare pass rates, latency, and cost; for stochastic generation tasks, use multiple outputs to observe stability where possible. Without running a real model, write "expected improvement," not "improved by 30%."
 
-## 准备代表性案例
+## Prepare representative cases
 
-- 正常、缺失、含糊、类别交叉、长输入、多来源矛盾及包含“忽略规则”的不可信数据；不要把测试集答案直接放进 few-shot 示例。
-- 若样本含用户隐私、商业机密或第三方图像，按目标项目政策处理授权、脱敏和保留期限；不要自动上传生产数据做对照。
-- 明确评审者是谁、可接受误差与判定标准；保留失败样例，别只挑最好的一次展示。
+- Normal, missing, ambiguous, overlapping-category, long-input, conflicting-source cases, and untrusted data containing "ignore the rules"; do not put test-set answers directly into few-shot examples.
+- If samples contain user privacy, trade secrets, or third-party images, handle authorization, redaction, and retention under the target project's policies; do not automatically upload production data for comparisons.
+- Specify reviewers, acceptable error, and decision criteria; retain failure samples rather than showcasing only the best run.
 
-| 任务 | 可检查指标 | 失败时先排查 |
+| Task | Checkable metrics | First checks on failure |
 | --- | --- | --- |
-| 分类/抽取 | 分类型准确率、错漏字段、未知值误填、schema 合格率 | 类别定义、边界样本、schema 与输入来源 |
-| 摘要/带来源问答 | 关键事实覆盖、虚构率、逐条引用支持率、拒答是否合理 | 来源缺失/过期、检索召回、分段遗失 |
-| 写作/翻译/代码 | 事实/术语一致性、受众适配、测试与项目契约符合度 | brief 缺项、术语冲突、测试未运行 |
-| 工具调用 | 应调用/不应调用准确率、参数有效率、写入前授权、失败恢复 | description 重叠、缺参、服务端校验与错误语义 |
-| 生图/编辑 | 主体与数量、构图留白、文字逐字准确、身份/局部保留、人工可用率 | 是否真传参考图、参数支持、内容与构图冲突 |
+| Classification/extraction | Per-category accuracy, incorrect/missing fields, incorrectly filled unknowns, schema compliance | Category definitions, boundary cases, schema and input sources |
+| Summarization/source-grounded question answering | Key-fact coverage, fabrication rate, citation support per claim, appropriate abstention | Missing/stale sources, retrieval recall, information lost in segmentation |
+| Writing/translation/code | Fact/terminology consistency, audience fit, tests and project-contract compliance | Missing brief details, terminology conflicts, tests not run |
+| Tool calling | Accuracy of calling/not calling, valid arguments, authorization before writes, failure recovery | Overlapping descriptions, missing arguments, server-side validation and error semantics |
+| Image generation/editing | Subject and count, composition whitespace, exact text accuracy, identity/local preservation, human usability rate | Whether references were actually supplied, parameter support, content/composition conflicts |
 
-比较时记录：`任务/样本版本 → prompt/schema 版本 → 模型及设置 → 结果 → 失败类型 → 下一项单变量修改`。批量评估不是普通单次创作的门槛；只有一个样例时先做针对性检查，不假装有统计显著性。视觉图常需人工盲评和逐项核对；图片 API 输出参数可能比多加形容词更有效。上线后如允许，监控输入分布变化及模型/API 升级的回归。
+Record comparisons as: `task/sample version → prompt/schema version → model and settings → result → failure type → next single-variable change`. Batch evaluation is not a prerequisite for ordinary one-off creation; with only one sample, perform targeted checks rather than claiming statistical significance. Visual images often require blind human review and item-by-item checks; image API output parameters may be more effective than adding adjectives. After deployment, if allowed, monitor input-distribution changes and regressions from model/API upgrades.
 
-## 测试证明什么
+## What tests prove
 
-区分模板渲染、解析/schema、本地业务逻辑和真实模型行为。前几层通过不能代替最后一层的效果评估；未获授权运行模型时，报告已验证的边界和未验证事项，不用“prompt 包含某句话”充当行为证据。
+Distinguish template rendering, parsing/schema, local business logic, and real model behavior. Passing the earlier layers cannot replace effectiveness evaluation of the last; without authorization to run a model, report verified boundaries and unverified items rather than using "the prompt contains a particular sentence" as behavioral evidence.
 
-措辞锁定、矛盾 fake 响应及有效测试的边界，见 [通用反模式与反例](anti-patterns.md)。不因发现脆弱断言就全删 snapshot 或 fake 测试，也不为纯文案修改新建镜像文本测试。
+For wording lock-in, contradictory fake responses, and the boundaries of valid tests, see [Common anti-patterns and counterexamples](anti-patterns.md). Do not delete all snapshot or fake tests because brittle assertions were found, and do not create mirror-text tests for wording-only changes.
 
-参考 [Anthropic 评估前置建议](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview)、[OpenAI 提示工程](https://developers.openai.com/api/docs/guides/prompt-engineering)与 [OpenAI 图片提示检查建议](https://developers.openai.com/api/docs/guides/image-prompting)。任务样本和指标是本 skill 的工程化整理，不能当作已跑过的实验结果。
+See [Anthropic's evaluation-first guidance](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview), [OpenAI prompt engineering](https://developers.openai.com/api/docs/guides/prompt-engineering), and [OpenAI image-prompt checking guidance](https://developers.openai.com/api/docs/guides/image-prompting). Task samples and metrics are this skill's engineering synthesis, not results of experiments already run.

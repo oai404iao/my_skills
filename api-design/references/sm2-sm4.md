@@ -1,22 +1,22 @@
-# SM2+SM4 应用层加密：v1 实现契约
+# SM2+SM4 Application-Layer Encryption: v1 Implementation Contract
 
-仅在项目明确选择 SM2+SM4 应用层信封时使用；先读 [应用层加密选型](application-encryption.md)。本契约以用户提供的《SM2 + SM4 应用层加密方案》为起点，**以已落地的 `v8_picture` 无状态线格式为 `X-SM-V: 1` 基线**，再定义同线格式的有状态模式、按字段加密的 multipart、浏览器公钥缓存和三级启用策略。这些扩展是本 skill 的设计约定，**不是声称 `v8_picture` 已实现它们**。
+Use only when the project explicitly selects an SM2+SM4 application-layer envelope; first read [Application-Layer Encryption Selection](application-encryption.md). This contract starts from the user-provided "SM2 + SM4 Application-Layer Encryption Scheme", **uses the implemented `v8_picture` stateless wire format as the `X-SM-V: 1` baseline**, and then defines a stateful mode with the same wire format, field-level encryption for multipart, browser public-key caching, and a three-level enablement policy. These extensions are design conventions in this skill, **not claims that `v8_picture` has implemented them**.
 
-原草案也使用 `X-SM-V: 1`，但其标准 Base64、`C2S`/`S2C` 派生、确定性 IV 和 `X-SM-IV` 与这里**不互通**。不能在同一入口仅凭版本头自动判断两种 v1；采用本契约意味着将该入口的 v1 定义为下述落地版，已有原草案格式调用方须单独规划迁移。原稿未附许可证声明；此处只重述必要参数与流程，不照搬其项目环境结论。
+The original draft also used `X-SM-V: 1`, but its standard Base64, `C2S`/`S2C` derivation, deterministic IVs, and `X-SM-IV` are **incompatible** with this contract. The version header alone cannot distinguish the two v1 formats at the same entry point. Adopting this contract means defining that entry point's v1 as the implemented format below; callers using the original draft format require a separate migration plan. The original document included no license statement; this document restates only the necessary parameters and flow, without copying its conclusions about the project environment.
 
-**保护边界**：TLS 仍必需。本信封旨在保护选定的敏感信息，不要求认证整个 URL、multipart、文件字节或 HTTP 响应状态，也不提供独立的客户端身份认证或前向保密。姓名、证件号、手机号、**body 中的口令/令牌**、回调凭证和内部拓扑等敏感内容须放入加密的 JSON body 或白名单字段；业务标识按业务敏感度选择。已有的 `Authorization: Bearer ...` 等鉴权头在本信封之外，仍会在 TLS 终止点可见；不能因加密业务 body 就宣称它们被保护。公开分页/排序字段、路径资源标识、multipart 文件与协议元数据可以保持明文。若这些明文内容本身需要抗篡改或在 TLS 卸载后保密，须另定方案，不能宣称本信封已覆盖。
+**Protection boundary**: TLS remains mandatory. This envelope is intended to protect selected sensitive information; it does not require authentication of the entire URL, multipart content, file bytes, or HTTP response status, nor does it provide independent client identity authentication or forward secrecy. Sensitive content such as names, identity document numbers, phone numbers, **passwords/tokens in the body**, callback credentials, and internal topology must be placed in an encrypted JSON body or allowlisted fields; choose whether to protect business identifiers according to their sensitivity. Existing authentication headers such as `Authorization: Bearer ...` are outside this envelope and remain visible at TLS termination points; encrypting the business body does not protect them. Public pagination/sorting fields, resource identifiers in paths, multipart files, and protocol metadata may remain plaintext. If these plaintext elements themselves require tamper resistance or confidentiality after TLS offload, define another scheme; do not claim this envelope covers them.
 
-## 1. 共用线格式与密码参数
+## 1. Shared Wire Format and Cryptographic Parameters
 
-| 项 | v1 约定 |
+| Item | v1 convention |
 | --- | --- |
-| SM2 | 调用方用服务端真实的 sm2p256v1 公钥封装 16 字节随机 `K_s`；未压缩点以 `0x04` 开头、长 65B；密文固定 **C1C3C2**（16B 明文得到 113B 密文）。使用 JS 库时若其输出省略 `04`，传输前补回 |
-| SM4-GCM | 每个需要加密的值使用 16B 派生密钥、**新生成的随机 12B IV** 和 16B Tag；禁止同一密钥/IV 组合在不同加密操作中重复 |
-| 编码 | `Base64_RawURL(IV(12B) ‖ Ciphertext ‖ Tag(16B))`，URL-safe、**无 padding**，统一用于 JSON body、query 和 multipart 文本字段；`X-SM-Key` 也使用无 padding Base64URL 编码 SM2 密文。解码可接受有 padding 的 Base64URL，不接受标准 Base64 字母表作为另一种隐式格式 |
-| 密钥长度与编码核对 | 113B SM2 密文编码为**151 字符**的无 padding Base64URL（含 padding 才是 152 字符）；不得依赖实现库默认的密文段顺序 |
-| 版本与 IV 头 | `X-SM-V: 1`；**没有 `X-SM-IV`**，IV 随每个密文值传输；同一请求可以含多个互不相同的 IV |
+| SM2 | The caller encapsulates a random 16-byte `K_s` using the server's authentic sm2p256v1 public key; the uncompressed point starts with `0x04` and is 65B long; ciphertext order is fixed as **C1C3C2** (16B plaintext yields 113B ciphertext). If a JS library omits `04` from its output, restore it before transmission |
+| SM4-GCM | Each value requiring encryption uses a 16B derived key, a **fresh random 12B IV**, and a 16B Tag; never reuse the same key/IV combination across different encryption operations |
+| Encoding | `Base64_RawURL(IV(12B) ‖ Ciphertext ‖ Tag(16B))`, URL-safe, **without padding**, consistently used for JSON bodies, query values, and multipart text fields; `X-SM-Key` also encodes SM2 ciphertext in unpadded Base64URL. Decoding may accept padded Base64URL, but not the standard Base64 alphabet as another implicit format |
+| Key length and encoding checks | 113B SM2 ciphertext encodes to **151 characters** of unpadded Base64URL (152 characters only with padding); do not rely on a library's default ciphertext segment order |
+| Version and IV headers | `X-SM-V: 1`; **no `X-SM-IV`**; the IV travels with each ciphertext value, and a single request may contain multiple distinct IVs |
 
-会话密钥 `K_s` 由调用方 CSPRNG 生成，仅以 `X-SM-Key` 中的 SM2 密文传输，不以明文回传；私钥不进源码、镜像或日志。用途/方向/载体分离的密钥派生使用以下字节级公式，`info` 和 `scope` 均按 UTF-8 编码：
+The caller generates session key `K_s` with a CSPRNG and transmits it only as SM2 ciphertext in `X-SM-Key`, never returning it in plaintext; private keys must not enter source code, images, or logs. Key derivation separating purpose/direction/carrier uses the following byte-level formula; both `info` and `scope` are UTF-8 encoded:
 
 ```text
 KDF_SM3(Z, info, L):
@@ -24,44 +24,44 @@ KDF_SM3(Z, info, L):
   return (T_1 ‖ T_2 ‖ ...)[0:L]
 
 K_msg = KDF_SM3(K_s, "V8SM1|K|" ‖ direction ‖ "|" ‖ scope, 16)
-direction = "C2S"（请求）或 "S2C"（响应）
-scope = "body" | "query:<参数名>" | "form:<字段名>"
+direction = "C2S" (request) or "S2C" (response)
+scope = "body" | "query:<parameter_name>" | "form:<field_name>"
 ```
 
-SM4-GCM 的 AAD 对**每个被加密的值**分别构造，字符串为 UTF-8，`\n` 是一个真实换行字节：
+Construct SM4-GCM AAD separately for **each encrypted value**. Strings are UTF-8, and `\n` is an actual newline byte:
 
 ```text
 AAD = "V8SM1\n" ‖ METHOD ‖ "\n" ‖ PATH ‖ "\n" ‖ sid ‖
       "\n" ‖ seq ‖ "\n" ‖ ts ‖ "\n" ‖ scope
 ```
 
-- `METHOD` 大写；`PATH` 是双方一致的、**不含 query** 的请求路径（前端按 URL pathname，Go 中间件按 `URL.Path`）；反向代理改写或路径转义可能导致不一致，联调时须固定调用方与接收方用于 AAD 的实际路径。
-- `seq` 为十进制整数，`ts` 为十进制 Unix 毫秒时间戳；无状态请求的 `sid` 取空字符串。响应的 AAD 沿用**该请求**的 method/path/sid/seq/ts，响应 body 使用 `scope=body`、`direction=S2C`。AAD 不包含 HTTP 状态或未加密字段；这不保证它们的应用层完整性。
-- `query:<name>` 把加密的 query 值绑定到参数名；`form:<name>` 把加密的 multipart 文本值绑定到 part 名。`form:` 是本契约的 multipart 扩展，`v8_picture` BFF 本身未实现 multipart。
+- `METHOD` is uppercase; `PATH` is the request path agreed by both sides, **excluding the query** (URL pathname on the frontend, `URL.Path` in Go middleware). Reverse-proxy rewrites or path escaping may cause mismatches; during integration, fix the actual paths the caller and receiver use for AAD.
+- `seq` is a decimal integer, and `ts` is a decimal Unix timestamp in milliseconds; stateless requests use an empty string for `sid`. Response AAD reuses **that request's** method/path/sid/seq/ts; response bodies use `scope=body` and `direction=S2C`. AAD does not include HTTP status or unencrypted fields, so their application-layer integrity is not guaranteed.
+- `query:<name>` binds an encrypted query value to its parameter name; `form:<name>` binds an encrypted multipart text value to its part name. `form:` is this contract's multipart extension; the `v8_picture` BFF itself does not implement multipart.
 
-| 请求头 | 规则 |
+| Request header | Rule |
 | --- | --- |
-| `X-SM-V` | 加密请求必需，值 `1`；是否**必须**加密由服务端级别决定，而非客户端自行声明 |
-| `X-SM-Seq` | 加密请求必需；无状态调用方设 `1`，有状态调用方从 `1` 递增；**不以序号做重放去重** |
-| `X-SM-Ts` | 加密请求必需，毫秒 Unix 时间戳，服务端检查时间窗口两端 |
-| `X-SM-Key` | 无状态请求和有状态建链请求必需；传 SM2 封装的 `K_s` |
-| `X-SM-Sid` | 有状态后续请求必需；无状态请求不传 |
+| `X-SM-V` | Required for encrypted requests, value `1`; whether encryption is **mandatory** is determined by the server level, not declared unilaterally by the client |
+| `X-SM-Seq` | Required for encrypted requests; stateless callers set `1`, stateful callers increment from `1`; **sequence numbers are not used for replay deduplication** |
+| `X-SM-Ts` | Required for encrypted requests, Unix timestamp in milliseconds; the server checks both ends of the time window |
+| `X-SM-Key` | Required for stateless requests and stateful session-establishment requests; carries SM2-encapsulated `K_s` |
+| `X-SM-Sid` | Required for subsequent stateful requests; omitted from stateless requests |
 
-加密的 JSON 请求体及响应体都是 `Content-Type: application/json` 下的**单字段**信封，封装前后业务 JSON 语义不变：
+Encrypted JSON request and response bodies are **single-field** envelopes with `Content-Type: application/json`; business JSON semantics remain unchanged before and after encapsulation:
 
 ```json
 {"d":"<Base64_RawURL(IV || Ciphertext || Tag)>"}
 ```
 
-JSON body 存在且需要加密时，整体业务对象进入 `d`，而不是仅对其若干嵌套字段加密。对**应收 JSON body** 的受保护接口，若请求声明加密但携带非 `application/json` 类型的非空 body、缺失/无效 `d`，或无法解密，必须拒绝，不能把未解密的 body 透传给 handler；无 body 请求及已定义的部分加密 multipart 是例外。`v8_picture` 的现有中间件对非 JSON 类型会直接跳过解密，采用这一约束须补齐入口校验。响应有非空 JSON body 且已打开请求信封时，加密整个响应体，带 `X-SM-V: 1` 和回显的 `X-SM-Seq`；**不**返回 `X-SM-IV`。建链前无法解封的错误以最小明文响应返回且不带 `X-SM-V`；已解封后的 JSON 错误同样加密。成功的空响应使用 204（304 仅在其适用场景），不带 `X-SM-V`；**空 body 的 200 不在该例外中**。`OPTIONS` 预检及公钥发现接口明文。调用方处理加密请求的成功 JSON 响应时须验证信封，不因缺头悄悄当作成功明文；解封前的明文错误和约定的空响应是例外。
+When a JSON body exists and requires encryption, the entire business object goes into `d`, rather than encrypting only selected nested fields. For protected endpoints **expected to receive a JSON body**, reject requests that declare encryption but carry a nonempty body of a type other than `application/json`, have missing/invalid `d`, or cannot be decrypted. Never pass an undecrypted body through to the handler; bodyless requests and defined partially encrypted multipart are exceptions. The existing `v8_picture` middleware skips decryption for non-JSON types, so adopting this constraint requires additional entry-point validation. When a response has a nonempty JSON body and the request envelope has been opened, encrypt the entire response body and include `X-SM-V: 1` and the echoed `X-SM-Seq`; do **not** return `X-SM-IV`. Errors that cannot be unwrapped before session establishment return minimal plaintext responses without `X-SM-V`; JSON errors after successful unwrapping are also encrypted. Successful empty responses use 204 (304 only where applicable), without `X-SM-V`; **200 with an empty body is not covered by this exception**. `OPTIONS` preflight and public-key discovery endpoints are plaintext. When handling successful JSON responses to encrypted requests, callers must validate the envelope rather than silently treating missing headers as successful plaintext; plaintext errors before unwrapping and agreed empty responses are exceptions.
 
-## 2. 无状态模式：每请求新密钥
+## 2. Stateless Mode: A New Key for Each Request
 
-适合不保存会话的浏览器、服务间调用；此部分的线格式参考 `v8_picture` 已实现的 Go/浏览器无状态协议：
+Suitable for browsers that do not retain sessions and for service-to-service calls; this section's wire format follows the implemented Go/browser stateless protocol in `v8_picture`:
 
-1. 每次请求（包括读请求重试）新生成 16B `K_s`，用服务端 SM2 公钥封装为 `X-SM-Key`；发 `X-SM-V: 1`、`X-SM-Seq: 1`、`X-SM-Ts`，**不发 `X-SM-Sid`**。
-2. 对有 JSON body 的请求按 `direction=C2S, scope=body` 派生密钥，生成新 IV，并以 `{"d":...}` 传输；无 body 的 GET/DELETE 不造空信封。敏感 query 逐值使用 `query:<name>` 加密；没有配置为敏感的查询参数仍保持明文。白名单由调用方与服务端共同约定，不能一端加密、另一端按明文读。
-3. 服务端解析头、检查时间戳、SM2 解封 `K_s`，按字段的 scope/AAD 验证并解密，再处理业务；有 JSON 响应时用同一 `K_s` 的 `direction=S2C, scope=body`、**新的随机 IV** 加密响应。请求结束即丢弃 `K_s`，不分配 `sid`。
+1. Generate a fresh 16B `K_s` for every request (including retries of reads), encapsulate it with the server's SM2 public key as `X-SM-Key`, and send `X-SM-V: 1`, `X-SM-Seq: 1`, and `X-SM-Ts`; **do not send `X-SM-Sid`**.
+2. For requests with a JSON body, derive the key with `direction=C2S, scope=body`, generate a fresh IV, and transmit `{"d":...}`; do not create empty envelopes for bodyless GET/DELETE requests. Encrypt each sensitive query value with `query:<name>`; query parameters not configured as sensitive remain plaintext. The caller and server must agree on the allowlist; one side must not encrypt while the other reads plaintext.
+3. The server parses headers, checks the timestamp, unwraps `K_s` with SM2, and authenticates/decrypts each field using its scope/AAD before business processing. If there is a JSON response, encrypt it with the same `K_s`, `direction=S2C, scope=body`, and a **fresh random IV**. Discard `K_s` at the end of the request; do not allocate a `sid`.
 
 ```http
 POST /api/v1/items:search HTTP/1.1
@@ -74,57 +74,57 @@ X-SM-Key: <Base64_RawURL(SM2_C1C3C2(PK_enc, K_s))>
 {"d":"<Base64_RawURL(IV || Ciphertext || Tag)>"}
 ```
 
-此模式中 `seq=1` 与时间戳不是防重放措施：在允许的时间窗口内，相同请求**可以重复执行**；重放同一密文只重复解密，不是再次加密。服务端每次生成响应时仍使用**新 IV**，避免对被重放请求的不同响应复用 `(K_s, IV)`。有业务写入副作用时另定义幂等键、唯一业务 ID 等重复提交策略；幂等不改变“窗口内报文可重放”的事实。单次请求频繁加密大量值时同样须控制每把派生密钥下的 IV 碰撞风险。
+In this mode, `seq=1` and the timestamp are not replay prevention: the same request **can execute repeatedly** within the permitted time window; replaying the same ciphertext repeats decryption, not encryption. The server still uses a **fresh IV** whenever it generates a response, avoiding reuse of `(K_s, IV)` for different responses to replayed requests. Define separate duplicate-submission policies such as idempotency keys or unique business IDs for business-write side effects; idempotency does not change the fact that messages can be replayed within the window. Frequent encryption of many values in one request also requires controlling IV collision risk under each derived key.
 
-## 3. 有状态模式：同线格式、可复用密钥
+## 3. Stateful Mode: The Same Wire Format with Reusable Keys
 
-**这是在无状态线格式上的设计扩展，不是 `v8_picture` 已有功能。** SM2/SM4 参数、Base64URL、`scope`、AAD 和随机 IV **与无状态模式完全相同**；不恢复原草案的确定性 IV、标准 Base64 或旧 KDF。
+**This is a design extension to the stateless wire format, not an existing `v8_picture` feature.** SM2/SM4 parameters, Base64URL, `scope`, AAD, and random IVs are **identical to stateless mode**; do not restore the original draft's deterministic IVs, standard Base64, or old KDF.
 
-1. **建链**：调用方生成 `K_s`，发一笔不带 `X-SM-Sid`、带 `X-SM-Key` 的加密建链请求（可由项目选定专门的会话端点）；按请求 AAD 中的空 `sid` 加密。服务端解封后生成不可预测的 `sid`，保存 `sid → {K_s, 认证主体/权限边界, 空闲/绝对过期时间, 加密次数}`，有 TTL 且不写明文密钥日志。建链响应须以该请求的 `S2C/body` 信封返回包含 `sid` 的 JSON；调用方**只从已验证的密文 body 取得 `sid`**，不依赖明文响应头。无响应 body 的接口不能充当建链成功响应。
-2. **后续请求**：携带 `X-SM-Sid`、`X-SM-Seq`、`X-SM-Ts` 和 `X-SM-V`，**不再携带 `X-SM-Key`**。服务端先按已鉴权的调用方查找且校验 `sid` 归属和 TTL，再取 `K_s` 验证密文/AAD；响应沿用请求 `sid` 及其他 AAD 元数据，使用 `S2C/body` 的独立密钥和新随机 IV。
-3. **过期与轮换**：建议空闲超时 30 分钟、绝对超时 8 小时；注销、认证主体变更或令牌刷新时撤销旧 `sid`，通过新建链请求生成新的 `K_s`/`sid`。随机 IV **不**由 `seq` 派生；长会话或单把派生密钥加密次数过多时应提前结束并换钥，须按项目消息量设置限额，不能把原稿的 2³² 条报文上限当作随机 IV 的安全承诺。
+1. **Session establishment**: the caller generates `K_s` and sends an encrypted establishment request without `X-SM-Sid` but with `X-SM-Key` (the project may select a dedicated session endpoint), encrypting with an empty `sid` in request AAD. After unwrapping, the server generates an unpredictable `sid` and stores `sid → {K_s, authenticated principal/permission boundary, idle/absolute expiry, encryption count}`, with a TTL and no plaintext-key logging. The establishment response must return JSON containing `sid` in that request's `S2C/body` envelope. The caller **obtains `sid` only from a validated ciphertext body**, not plaintext response headers. An endpoint without a response body cannot serve as a successful establishment response.
+2. **Subsequent requests**: carry `X-SM-Sid`, `X-SM-Seq`, `X-SM-Ts`, and `X-SM-V`, **no longer carrying `X-SM-Key`**. The server first looks up the session for the authenticated caller and validates `sid` ownership and TTL, then retrieves `K_s` to validate ciphertext/AAD. Responses reuse the request's `sid` and other AAD metadata, with the separate `S2C/body` key and a fresh random IV.
+3. **Expiry and rotation**: suggested idle timeout is 30 minutes and absolute timeout is 8 hours. Revoke the old `sid` on logout, authenticated-principal changes, or token refresh, and generate a new `K_s`/`sid` through a new establishment request. Random IVs are **not** derived from `seq`. End sessions early and rotate keys for long sessions or excessive encryptions under one derived key; set limits according to project message volume, rather than treating the original document's 2³²-message limit as a safety guarantee for random IVs.
 
-客户端正常请求仍递增 `seq` 并带有效时间戳，但服务端**不维护已用序号集合，也不拒绝窗口内重复的 `seq`**。有状态只是复用密钥、减少每请求 SM2 操作，不意味着防重放；建链请求本身也可在窗口内重放，须对建链次数限流。并发请求可乱序到达；有效期内相同请求可能重复生效，写操作仍依赖业务幂等。`sid` 不是登录令牌，不能替代认证与授权。
+Clients still increment `seq` and send valid timestamps for normal requests, but the server **does not maintain a set of used sequence numbers or reject repeated `seq` values within the window**. Stateful mode only reuses keys to reduce per-request SM2 operations; it does not imply replay protection. Session-establishment requests themselves can also be replayed within the window, so rate-limit establishment attempts. Concurrent requests may arrive out of order; identical requests can take effect repeatedly during their validity period, and writes still rely on business idempotency. `sid` is not a login token and cannot replace authentication or authorization.
 
-## 4. 特殊载体与部分加密
+## 4. Special Carriers and Partial Encryption
 
-| 载体/字段 | 应用层处理 | 明文边界 |
+| Carrier/field | Application-layer handling | Plaintext boundary |
 | --- | --- | --- |
-| 无 body GET/DELETE | 对白名单内的敏感 query 值分别用 `query:<name>` 加密为 Base64_RawURL；服务端按名称解密并还原给业务层 | 路径、参数名、非敏感 query 值仍明文；加密后 query 建议限 4 KiB |
-| JSON 请求/响应 | 加密整个非空 JSON 业务 body 为 `{"d":...}` | HTTP 方法、路径、状态和其他头部仍可见 |
-| multipart 文本字段 | 仅白名单内敏感 part 值使用 `form:<name>` 单独加密；例如 `items` JSON 文本或 `callback` 配置，解密后再按原媒体类型解析 | 白名单外非敏感文本字段可保持明文 |
-| multipart 文件 part | v1 不做应用层加密或认证 | 文件字节、part 名、`filename`、`Content-Type` 等仍可见；需依赖 TLS、鉴权和文件校验 |
+| Bodyless GET/DELETE | Encrypt each allowlisted sensitive query value with `query:<name>` as Base64_RawURL; the server decrypts by name and restores values for the business layer | Paths, parameter names, and nonsensitive query values remain plaintext; suggested encrypted query limit is 4 KiB |
+| JSON requests/responses | Encrypt the entire nonempty business JSON body as `{"d":...}` | HTTP methods, paths, statuses, and other headers remain visible |
+| multipart text fields | Separately encrypt only sensitive allowlisted part values using `form:<name>`, such as `items` JSON text or `callback` configuration; parse using the original media type after decryption | Nonsensitive text fields outside the allowlist may remain plaintext |
+| multipart file parts | v1 provides no application-layer encryption or authentication | File bytes, part names, `filename`, `Content-Type`, and so on remain visible; rely on TLS, authentication, and file validation |
 
-multipart 请求整体保持 `multipart/form-data`；加密文本值的 part 仍可为 `text/plain`，值是 `<Base64_RawURL(IV ‖ Ciphertext ‖ Tag)>`。**一个 `X-SM-V: 1` 请求允许部分文本字段和文件保持非加密**；`force` 也只是强制使用信封并保护既定敏感字段，并不表示文件字节受保护。对明文字段不得误报“受 GCM 认证”。各端点明确字段白名单和必填性。默认**拒绝白名单内的同名重复 query 值或 multipart 文本 part**，而非只解密第一个并静默丢弃其余值；如接口确需重复值，必须单独约定每个值的处理及顺序。`v8_picture` 现有 query 处理采用 `get/set`，落地此拒绝规则需调整调用方和服务端。文件名和客户端媒体类型不可信，文件大小/类型、临时存储和访问控制仍按上传契约校验。
+The request as a whole remains `multipart/form-data`; encrypted text-value parts may still use `text/plain`, with values of `<Base64_RawURL(IV ‖ Ciphertext ‖ Tag)>`. **An `X-SM-V: 1` request may leave some text fields and files unencrypted**; `force` only mandates use of the envelope and protection of the specified sensitive fields, not protection of file bytes. Do not misreport plaintext fields as "GCM-authenticated." Each endpoint specifies its field allowlist and requiredness. By default, **reject duplicate query values or multipart text parts with the same allowlisted name**, rather than decrypting only the first and silently dropping the rest. If an endpoint genuinely needs repeated values, separately agree on handling and ordering for every value. Existing `v8_picture` query processing uses `get/set`; implementing this rejection rule requires changes to the caller and server. Filenames and client media types are untrusted; continue validating file size/type, temporary storage, and access control under the upload contract.
 
-公开文件下载可以使用 TLS、鉴权或短时效签名 URL，不视作本信封对文件字节的加密。SM4-CTR + 无密钥的 `SM3(明文)` 摘要**不是**已定义的认证流式文件协议，本 v1 不启用；不能用它证明文件完整性。
+Public file downloads may use TLS, authentication, or short-lived signed URLs; this does not constitute file-byte encryption by this envelope. SM4-CTR + an unkeyed `SM3(plaintext)` digest is **not** a defined authenticated streaming-file protocol and is not enabled in this v1; it cannot establish file integrity.
 
-## 5. 公钥交付与浏览器 5 分钟缓存
+## 5. Public-Key Delivery and a 5-Minute Browser Cache
 
-服务端在 `on`/`force` 下提供免鉴权的明文公钥发现接口（路径随 API 前缀，示例 `GET /api/v1/sm/public-key`），响应如：
+Under `on`/`force`, the server provides a plaintext public-key discovery endpoint requiring no authentication (path follows the API prefix, for example `GET /api/v1/sm/public-key`), with a response such as:
 
 ```json
 {"version":"1","public_key":"04<128 hex>"}
 ```
 
-浏览器从该接口**动态获取**公钥，验证版本、编码和曲线公钥格式；仅在本次页面运行的内存中按**公钥接口的完整 URL + 版本**缓存成功结果，**获取成功起 5 分钟内**复用，过期须重新获取。HTTP 获取仍可使用 `cache: no-store`/`Cache-Control: no-store`，这里的 5 分钟是应用内存缓存，不等同于代理缓存。获取失败、版本不符或格式错误时不发送本应加密的业务请求；缓存过期后不使用旧值自动回退明文。
+The browser **fetches the public key dynamically** from this endpoint and validates the version, encoding, and curve public-key format. Cache successful results only in memory for the current page execution, keyed by **the full public-key endpoint URL + version**, and reuse them **for 5 minutes from successful retrieval**; fetch again after expiry. HTTP retrieval may still use `cache: no-store`/`Cache-Control: no-store`; these 5 minutes refer to an application memory cache, not a proxy cache. On retrieval failure, version mismatch, or malformed data, do not send business requests that should be encrypted. After cache expiry, do not reuse old values or automatically fall back to plaintext.
 
-这与 `v8_picture` 浏览器**每请求重新获取**公钥的现有实现不同，属本契约新要求。运行时获取不等于固定公钥指纹：公钥真实性依赖 HTTPS 及接口交付链；能主动替换公钥响应的主体可替换密钥，5 分钟缓存不能解决此问题。长期 SM2 私钥泄漏仍可解封录制的历史 `K_s`。轮换密钥时，服务端应考虑旧公钥在浏览器最长缓存 5 分钟及在途请求：可保留旧私钥短时解封，或明确接受切换期间的失败；不得在失败后默默降级为明文。服务间调用可按项目契约预置公钥，不必沿用浏览器缓存策略。
+This differs from the current `v8_picture` browser implementation, which **fetches the public key anew for every request**, and is a new requirement in this contract. Runtime retrieval is not public-key fingerprint pinning: public-key authenticity depends on HTTPS and the endpoint delivery chain; a party that can actively replace the public-key response can substitute a key, and the 5-minute cache does not solve this. Leakage of the long-term SM2 private key still permits unwrapping historical recorded `K_s` values. During key rotation, the server should account for browsers caching old public keys for up to 5 minutes and for in-flight requests: retain the old private key briefly for unwrapping, or explicitly accept failures during the transition; never silently downgrade to plaintext after failure. Service-to-service calls may preconfigure public keys under the project contract and need not use the browser caching policy.
 
-## 6. 级别、错误与验证
+## 6. Levels, Errors, and Verification
 
-按受保护的接口/调用方范围配置级别；`off/on/force` 的含义**不**由不可信请求头协商：
+Configure levels for the protected endpoint/caller scope; the meanings of `off/on/force` are **not** negotiated through untrusted request headers:
 
-| 级别 | 无 `X-SM-V` 的请求 | 带 `X-SM-V: 1` 的请求 |
+| Level | Requests without `X-SM-V` | Requests with `X-SM-V: 1` |
 | --- | --- | --- |
-| `off` | 仅明文处理 | 拒绝，不能把密文透传给业务层 |
-| `on` | 按已公开的明文/旧契约处理 | 按本信封解密；响应按约定处理 |
-| `force` | 拒绝（如 `sm_required`） | 校验并解密；部分非敏感 multipart 字段及文件仍可明文 |
+| `off` | Plaintext processing only | Reject; do not pass ciphertext through to the business layer |
+| `on` | Process under the published plaintext/legacy contract | Decrypt with this envelope; handle responses as specified |
+| `force` | Reject (for example `sm_required`) | Validate and decrypt; some nonsensitive multipart fields and files may remain plaintext |
 
-公钥发现、`OPTIONS` 和明确列出的健康探针可免于 `force`，但**业务路由不能因缺少加密头就自行退回明文**。受保护的 JSON 路由须同时校验媒体类型及 body 信封，不能仅凭几个 `X-SM-*` 头就把明文 body 当作加密请求。完全没有敏感字段的无 body 请求即使带信封头，也没有可校验的业务密文；此时 `force` 只约束启用标记和已定义字段，不提供对整个请求的密码学认证。处于 `on` 的客户端若已选择加密，也不因取不到公钥或收到未预期的明文成功响应而自动回退；`off` 必须有明确的**明文客户端模式**，不获取公钥、不发送加密头。现有 `v8_picture` 浏览器总是在业务请求前获取公钥，切换到本契约的 `off` 不能只改服务端配置，须同时调整客户端。其他 `X-SM-V` 值拒绝，不按明文处理。迁移旧客户端须评估 `on` 的持续时间与切换条件，不擅自淘汰旧信封。
+Public-key discovery, `OPTIONS`, and explicitly listed health probes may be exempt from `force`, but **business routes must not fall back to plaintext on their own because encryption headers are missing**. Protected JSON routes must validate both media type and the body envelope, not treat a plaintext body as an encrypted request merely because some `X-SM-*` headers exist. A bodyless request with no sensitive fields has no business ciphertext to validate, even if it carries envelope headers; in this case `force` constrains only the enablement marker and defined fields, not cryptographic authentication of the whole request. A client under `on` that has selected encryption must not automatically fall back because it cannot obtain a public key or receives an unexpected successful plaintext response. `off` requires an explicit **plaintext client mode**, with no public-key retrieval or encryption headers. The existing `v8_picture` browser always retrieves the public key before business requests, so switching to this contract's `off` requires client changes as well as server configuration changes. Reject other `X-SM-V` values rather than processing them as plaintext. For legacy-client migrations, assess the duration and transition conditions of `on`; do not retire old envelopes without authorization.
 
-服务端校验 `|now - ts| ≤ 300 秒`（过去和未来均校验），但**允许此窗口内重复提交**；`sm_replay` 不作为本方案的错误。密文/SM2 格式/Tag 错误对外合并为 `sm_invalid`，不能泄露详细原因；时间戳过期可用 `sm_expired`，有状态 `sid` 无效可用 `sm_session_expired`，加密 query/请求体超限可归入项目已有的 `request_too_large`。`off` 中加密请求与 `force` 中明文请求均须拒绝，具体 HTTP 状态/错误体应按项目已发布的契约明确；原草案的 `408`/`426` 状态映射不因本文件而成为 HTTP 通用要求。
+The server validates `|now - ts| ≤ 300 seconds` (checking both past and future), but **allows duplicate submissions within this window**; `sm_replay` is not an error in this scheme. Externally collapse ciphertext/SM2 format/Tag errors into `sm_invalid`, without leaking detailed causes. Timestamp expiry may use `sm_expired`, invalid stateful `sid` may use `sm_session_expired`, and encrypted query/request-body size violations may map to the project's existing `request_too_large`. Reject both encrypted requests under `off` and plaintext requests under `force`; specify HTTP statuses/error bodies under the project's published contract. The original draft's `408`/`426` status mappings do not become universal HTTP requirements because of this document.
 
-验证至少覆盖：SM3/SM4 已知向量、SM2 C1C3C2 与 `0x04` 前缀、Base64URL 往返；相同 `K_s`/方向/`scope` 与相同明文的两次加密应使用不同 IV；两方向/跨 scope/跨方法路径不能互解；`K_s="0123456789abcdef"` 时 `KDF_SM3(K_s, "V8SM1|K|C2S|body", 16)` 应为 `837cd670f33501d83a7dc35107621524`。AAD 互操作向量可用 `METHOD=POST, PATH=/api/v1/images:search, sid=sess-1, seq=1, ts=1730000000000, scope=body`，期望 UTF-8 文本为 `V8SM1\nPOST\n/api/v1/images:search\nsess-1\n1\n1730000000000\nbody`；实际无状态请求的 `sid` 应为空。再覆盖 5 分钟公钥缓存/过期与轮换、三个级别、空 body、加密错误、multipart 部分明文、两种模式的窗口内重放及写操作幂等。**测试向量及落地无状态流程不证明新增有状态模式、缓存或强制策略已在目标项目实现。**
+Verification must at least cover: SM3/SM4 known vectors, SM2 C1C3C2 and the `0x04` prefix, and Base64URL round trips; two encryptions of the same plaintext with the same `K_s`/direction/`scope` must use different IVs; ciphertext must not decrypt across directions, scopes, or methods/paths. For `K_s="0123456789abcdef"`, `KDF_SM3(K_s, "V8SM1|K|C2S|body", 16)` should be `837cd670f33501d83a7dc35107621524`. An AAD interoperability vector can use `METHOD=POST, PATH=/api/v1/images:search, sid=sess-1, seq=1, ts=1730000000000, scope=body`, with expected UTF-8 text `V8SM1\nPOST\n/api/v1/images:search\nsess-1\n1\n1730000000000\nbody`; actual stateless requests should use an empty `sid`. Also cover 5-minute public-key caching/expiry and rotation, the three levels, empty bodies, encrypted errors, partially plaintext multipart, within-window replay in both modes, and write idempotency. **Test vectors and the implemented stateless flow do not establish that the new stateful mode, caching, or enforcement policy is implemented in the target project.**
 
-不得记录 `K_s`、私钥、SM2 密文头 `X-SM-Key`、`d`、解密后的敏感字段或文件到日志/APM；公钥发现、窗口允许重放、部分字段明文及浏览器动态公钥的边界都应在目标接口契约中显式披露。本信封的算法名称或测试通过均不等同于安全审查或合规认证。[RFC 5116](https://www.rfc-editor.org/rfc/rfc5116.html#section-3.1) 要求同密钥 AEAD nonce 唯一，且其 AEAD 接口本身不提供防重放服务；[RFC 8998](https://www.rfc-editor.org/rfc/rfc8998.html#section-3.5.1) 描述的是 TLS 1.3 的 SM4-GCM 用法，不是本 HTTP 信封的标准。
+Do not log `K_s`, private keys, the SM2 ciphertext header `X-SM-Key`, `d`, decrypted sensitive fields, or files to logs/APM. Public-key discovery, allowed within-window replay, partially plaintext fields, and browser dynamic public-key boundaries should all be explicitly disclosed in target endpoint contracts. Neither this envelope's algorithm names nor passing tests are equivalent to security review or compliance certification. [RFC 5116](https://www.rfc-editor.org/rfc/rfc5116.html#section-3.1) requires unique AEAD nonces under the same key, and its AEAD interface itself provides no replay-prevention service; [RFC 8998](https://www.rfc-editor.org/rfc/rfc8998.html#section-3.5.1) describes SM4-GCM usage in TLS 1.3, not a standard for this HTTP envelope.

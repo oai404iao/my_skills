@@ -1,30 +1,30 @@
 ---
 name: development-workflow
-description: Git 开发流程规范，覆盖分支、提交、测试验证、合并清理与版本发布。Use when making changes in a Git repository - creating branches, writing Conventional Commits, deciding what to verify before merging, squash merging back to the integration branch, cleaning up branches and worktrees, or bumping versions, tagging releases, and updating a changelog. 用户要求隔离并行开发时按需读取 worktree 参考。
+description: Git development workflow guidelines covering branches, commits, testing and verification, merging and cleanup, and version releases. Use when making changes in a Git repository - creating branches, writing Conventional Commits, deciding what to verify before merging, squash merging back to the integration branch, cleaning up branches and worktrees, or bumping versions, tagging releases, and updating a changelog. Read the worktree reference as needed when the user requests isolated parallel development.
 ---
 
-# 开发流程指南
+# Development Workflow Guide
 
-对 Git 仓库做功能、修复、文档、重构、测试或维护改动时，按本指南组织流程：**分支开发 → 验证 → Squash Merge 回集成分支 → 清理 → 需要时发布版本**。
+When making feature, fix, documentation, refactoring, test, or maintenance changes in a Git repository, organize the work using this guide: **develop on a branch → verify → Squash Merge back to the integration branch → clean up → release a version when needed**.
 
-这是默认流程，不是阻塞开发的硬性限制。项目已有的 `AGENTS.md`、`CONTRIBUTING.md`、分支保护规则和团队约定优先；用户明确要求在当前分支工作、项目不适合建分支或环境受限时继续完成请求，但要说明偏离了什么。
+This is the default workflow, not a rigid restriction that blocks development. The project's existing `AGENTS.md`, `CONTRIBUTING.md`, branch protection rules, and team conventions take precedence. If the user explicitly asks to work on the current branch, the project is unsuitable for branching, or the environment is restricted, continue completing the request, but explain any deviations.
 
-## 默认约定
+## Default Conventions
 
-以下四项是本指南与常见做法最容易出现分歧的地方，先明确默认值：
+These four points are where this guide is most likely to differ from common practice, so establish the defaults first:
 
-1. **分支，不是 worktree**：默认在当前工作树用 `git switch -c` 创建开发分支。只有用户要求隔离、需要并行处理多个任务、或当前工作区的无关改动不该被打断时，才使用 linked worktree（见 [Worktree 隔离开发](references/worktrees.md)）。
-2. **只推送集成分支**：默认不推送开发分支到远程。开发分支在本地完成后直接合并，减少一次推送和一次远端清理。
-3. **合并后立即清理**：Squash Merge 成功即删除开发分支；用过 worktree 的连 worktree 一起删；确实推送过开发分支的，同步删除远端分支。
-4. **合并默认 Squash Merge**：集成分支每次整合只新增一个代表改动的提交，主干历史保持可读。
+1. **Branches, not worktrees**: By default, create a development branch in the current working tree with `git switch -c`. Use a linked worktree only when the user requests isolation, multiple tasks need to run in parallel, or unrelated changes in the current workspace must not be disturbed (see [Isolated Development with Worktrees](references/worktrees.md)).
+2. **Push only the integration branch**: By default, do not push development branches to the remote. Merge them directly after finishing locally, avoiding an extra push and remote cleanup.
+3. **Clean up immediately after merging**: Delete the development branch as soon as the Squash Merge succeeds; if a worktree was used, remove it too; if the development branch was actually pushed, also delete the remote branch.
+4. **Squash Merge by default**: Each integration adds just one commit representing the changes to the integration branch, keeping the mainline history readable.
 
-只读检查、代码解释、搜索、日志查看等不修改仓库的任务不需要分支、提交或发布。
+Tasks that do not modify the repository, such as read-only inspection, code explanation, searches, and log viewing, do not require branches, commits, or releases.
 
-## 流程
+## Workflow
 
-### 1. 侦察现状
+### 1. Inspect the Current State
 
-改文件之前先确认状态，不要凭分支名猜测：
+Check the state before editing files; do not guess based on branch names:
 
 ```bash
 git status --short --branch
@@ -32,11 +32,11 @@ git branch --show-current
 git remote -v
 ```
 
-确认当前目录是 Git 仓库、当前分支是集成分支还是其他任务的开发分支、工作区有没有未提交改动、集成分支到底叫 `main`、`master`、`develop` 还是别的名字。集成分支以项目文档、用户指定和远程默认分支为准。
+Confirm that the current directory is a Git repository, whether the current branch is the integration branch or another task's development branch, whether the workspace has uncommitted changes, and whether the integration branch is called `main`, `master`, `develop`, or something else. Determine the integration branch from project documentation, the user's instructions, and the remote default branch.
 
-### 2. 创建开发分支
+### 2. Create a Development Branch
 
-一个分支一个逻辑主题。
+One logical topic per branch.
 
 ```bash
 git fetch <remote> --prune
@@ -45,45 +45,45 @@ git pull --ff-only <remote> <integration-branch>
 git switch -c <type>/<short-description>
 ```
 
-分支名沿用项目规范；没有规范时用 `<type>/<short-description>`，前缀与 commit type 一致：`feat/`、`fix/`、`docs/`、`refactor/`、`perf/`、`test/`、`build/`、`ci/`、`style/`、`chore/`。有任务编号时写成 `feat/PROJ-123-user-export`。
+Follow the project's branch naming conventions. If none exist, use `<type>/<short-description>` with a prefix matching the commit type: `feat/`, `fix/`, `docs/`, `refactor/`, `perf/`, `test/`, `build/`, `ci/`, `style/`, or `chore/`. Include a task number when available, as in `feat/PROJ-123-user-export`.
 
-已经位于匹配当前任务的开发分支就继续用，不要重复建。工作区已有属于本任务的未提交改动时，可直接 `git switch -c <branch>`，改动会保留。工作区有**与任务无关**的改动时，不要 stash / reset / checkout 覆盖：要么先处理它们，要么改用 worktree 隔离，不要混入本次提交。
+If already on a development branch that matches the current task, keep using it rather than creating another. If the workspace already has uncommitted changes belonging to this task, use `git switch -c <branch>` directly; the changes will be preserved. If the workspace contains changes **unrelated to the task**, do not stash them or overwrite them with reset / checkout: handle them first or use a worktree for isolation, and do not include them in this commit.
 
-### 3. 实施与验证
+### 3. Implement and Verify
 
-只改与任务相关的文件，不顺带提交其他人的改动，不要默认 `git add .`。改动完成后运行项目规定的格式化、静态检查、测试和构建；验证强度按 [测试与验证](references/testing.md) 的风险分级选择。改动范围控制和提交前自检见 [实施与提交](references/development.md)。
+Change only files relevant to the task, do not include other people's changes in your commits, and do not use `git add .` by default. After completing the changes, run the formatting, static checks, tests, and builds required by the project; choose verification intensity using the risk levels in [Testing and Verification](references/testing.md). See [Implementation and Commits](references/development.md) for scope control and pre-commit checks.
 
-提交信息必须符合 Conventional Commits：
+Commit messages must follow Conventional Commits:
 
 ```text
 <type>[optional scope][!]: <description>
 ```
 
-例如 `fix(api): handle empty upstream response`。一个提交一个逻辑改动，不用 `update stuff`、`fix issue` 这类模糊描述，破坏性变更用 `!` 并补 `BREAKING CHANGE:` footer。
+For example, `fix(api): handle empty upstream response`. Keep one logical change per commit, avoid vague descriptions such as `update stuff` or `fix issue`, and mark breaking changes with `!` and a `BREAKING CHANGE:` footer.
 
-### 4. 同步集成分支
+### 4. Sync with the Integration Branch
 
-合并前确认开发分支基于最新集成分支，然后重新运行受影响的验证：
+Before merging, ensure that the development branch is based on the latest integration branch, then rerun affected verification:
 
 ```bash
 git fetch <remote> --prune
 git rebase <remote>/<integration-branch>
 ```
 
-冲突在自己分支上解决。不要切到集成分支草率解决冲突后直接提交。rebase 与 force-push 的边界见 [Git 分支与合并](references/git-workflow.md)。
+Resolve conflicts on your own branch. Do not switch to the integration branch, resolve conflicts hastily, and commit directly. See [Git Branching and Merging](references/git-workflow.md) for the boundaries on rebase and force-push.
 
-### 5. 合并回集成分支
+### 5. Merge Back to the Integration Branch
 
-**有远程托管时**（默认路径）：
+**When using remote hosting** (the default path):
 
 ```bash
-git push -u <remote> <development-branch>   # 仅在需要 PR/MR 评审时推送
-# 平台上选择 Squash Merge
+git push -u <remote> <development-branch>   # Push only when PR/MR review is needed
+# Select Squash Merge on the platform
 ```
 
-PR/MR 标题用 Conventional Commits 格式，描述至少写改动摘要和验证结果。GitHub CLI 示例：`gh pr merge --squash`。
+Use Conventional Commits format for the PR/MR title, and include at least a summary of changes and verification results in the description. GitHub CLI example: `gh pr merge --squash`.
 
-**纯本地项目、个人项目或明确允许本地集成**：
+**For local-only projects, personal projects, or when local integration is explicitly allowed**:
 
 ```bash
 git -C <main-worktree> switch <integration-branch>
@@ -93,47 +93,47 @@ git -C <main-worktree> commit -m "<type>(<scope>): <description>"
 git push <remote> <integration-branch>
 ```
 
-创建 PR/MR 时必须推送开发分支，这是默认规则里唯一的例外，任务结束就删掉它。托管平台的"合并后自动删除分支"要关掉：它会抢在本地清理之前动手，留下删不掉的本地分支。
+Creating a PR/MR requires pushing the development branch; this is the only exception to the default rule, and it must be deleted when the task is finished. Turn off the hosting platform's "automatically delete branches after merging" setting: it acts before local cleanup, leaving local branches that cannot be deleted.
 
-### 6. 合并后清理
+### 6. Clean Up After Merging
 
-先确认 Squash 提交已经进入集成分支，再按顺序清理：
+First confirm that the squash commit has reached the integration branch, then clean up in this order:
 
 ```bash
-git worktree remove <worktree-path>              # 用过 worktree 时，先删目录
-git branch -D <development-branch>               # Squash 后哈希已变，-d 通常拒绝
-git push <remote> --delete <development-branch>  # 只清理推送过的分支
+git worktree remove <worktree-path>              # If a worktree was used, remove its directory first
+git branch -D <development-branch>               # Squashing changes hashes, so -d usually refuses
+git push <remote> --delete <development-branch>  # Clean up only branches that were pushed
 ```
 
-`-D` 之前必须确认改动已经进集成分支，否则会丢提交。不要用 `rm -rf` 删 worktree；也不要为了省事给 `git worktree remove` 加 `--force` 绕过脏工作区检查，先看里面有什么。
+Before using `-D`, you must confirm that the changes are in the integration branch, or commits will be lost. Do not remove a worktree with `rm -rf`; do not add `--force` to `git worktree remove` just for convenience to bypass dirty-workspace checks. Inspect its contents first.
 
-### 7. 版本发布（按需）
+### 7. Release a Version (As Needed)
 
-任务需要对外交付、集成分支要打发布标记，或项目要求维护 CHANGELOG 时，读取 [版本与发布](references/versioning.md)：按 SemVer 决定版本号，用注解 tag 标记，更新 CHANGELOG。
+When the task requires external delivery, a release tag on the integration branch, or maintaining a CHANGELOG as required by the project, read [Versioning and Releases](references/versioning.md): choose the version using SemVer, mark it with an annotated tag, and update the CHANGELOG.
 
-## 异常情况
+## Exceptional Cases
 
-- **已在集成分支提交但未推送**：从当前提交建开发分支继续。改写集成分支历史前必须确认提交范围和用户意图，不盲目 `reset`。
-- **开发分支已推送过**：合并后在本地和远端都删除；确实需要保留时说明理由，不要留下无意的孤儿分支。
-- **无法建分支或建 worktree**：说明原因和风险后继续完成请求，不要因为流程执行不了就停下。
-- **项目要求其他合并策略**：项目规则优先，明确说明没有采用默认 Squash Merge。策略会影响发布标记的落点，改策略时同步检查 [版本与发布](references/versioning.md)。
+- **Committed on the integration branch but not yet pushed**: Create a development branch from the current commit and continue. Before rewriting integration branch history, confirm the range of commits and the user's intent; do not blindly `reset`.
+- **The development branch has already been pushed**: Delete it both locally and remotely after merging. Explain why if it truly needs to be retained, and do not leave unintended orphaned branches.
+- **Unable to create a branch or worktree**: Explain the reason and risks, then continue completing the request; do not stop just because the workflow cannot be followed.
+- **The project requires a different merge strategy**: Project rules take precedence; explicitly state that the default Squash Merge was not used. The strategy affects where release tags land, so also review [Versioning and Releases](references/versioning.md) when changing strategies.
 
-## 完成标准
+## Completion Criteria
 
-- 改动位于与任务匹配的独立分支，且分支只包含一个逻辑主题。
-- 提交信息符合 Conventional Commits，未混入无关改动。
-- 运行过的格式化、检查、测试或构建已如实报告，未运行的没有被说成通过。
-- 已通过 PR/MR 或本地 Squash Merge 整合，集成分支只新增一个代表本次改动的提交。
-- 开发分支已删除，用过的 worktree 已移除，推送过的开发分支已从远端删除。
-- 需要发布时，版本号、注解 tag 和 CHANGELOG 一致，且与集成分支上的实际改动匹配。
+- Changes are on a separate branch matching the task, with only one logical topic.
+- Commit messages follow Conventional Commits, with no unrelated changes included.
+- Formatting, checks, tests, or builds that were run have been reported honestly; checks not run have not been described as passing.
+- Integration is complete through a PR/MR or local Squash Merge, adding just one commit representing these changes to the integration branch.
+- The development branch has been deleted, any worktree used has been removed, and any pushed development branch has been deleted remotely.
+- When a release is needed, the version number, annotated tag, and CHANGELOG agree and match the actual changes on the integration branch.
 
-## 参考
+## References
 
-- [Git 分支与合并](references/git-workflow.md)：命令细节、rebase 与 force-push 边界、冲突处理和清理排错。
-- [实施与提交](references/development.md)：改动范围控制、提交前自检、如何报告完成情况。
-- [测试与验证](references/testing.md)：按风险分级选择验证强度，以及不能跳过的验证项。
-- [版本与发布](references/versioning.md)：SemVer 决策、注解 tag、CHANGELOG 与发布步骤。
-- [Worktree 隔离开发](references/worktrees.md)：仅在需要隔离并行任务时读取。
+- [Git Branching and Merging](references/git-workflow.md): Command details, boundaries on rebase and force-push, conflict resolution, and cleanup troubleshooting.
+- [Implementation and Commits](references/development.md): Scope control, pre-commit checks, and reporting completion.
+- [Testing and Verification](references/testing.md): Choosing verification intensity by risk level and checks that cannot be skipped.
+- [Versioning and Releases](references/versioning.md): SemVer decisions, annotated tags, CHANGELOG, and release steps.
+- [Isolated Development with Worktrees](references/worktrees.md): Read only when parallel tasks need isolation.
 - [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/)
 - [Semantic Versioning 2.0.0](https://semver.org/)
 - [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/)

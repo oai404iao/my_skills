@@ -1,82 +1,82 @@
-# 测试与验证
+# Testing and Verification
 
-按改动风险分级选择验证强度，并明确哪些验证不能跳过。主流程见 [开发流程指南](../SKILL.md)。
+Choose verification intensity by the risk of the changes, and specify which checks cannot be skipped. See the [Development Workflow Guide](../SKILL.md) for the main workflow.
 
-## 先找项目规定的命令
+## Find the Project's Required Commands First
 
-验证方式优先取自项目，而不是套用通用命令：
+Take verification methods from the project first, rather than applying generic commands:
 
-- `AGENTS.md`、`CONTRIBUTING.md`、README、`docs/` 里的开发说明。
-- 任务脚本：`package.json` 的 `scripts`、`Makefile`、`justfile`、`pyproject.toml`、`Cargo.toml`、`build.gradle`。
-- CI 配置：`.github/workflows/`、`.gitlab-ci.yml`、`.circleci/`。CI 里跑的命令就是事实上的验收标准。
+- Development instructions in `AGENTS.md`, `CONTRIBUTING.md`, README, and `docs/`.
+- Task scripts: `scripts` in `package.json`, `Makefile`, `justfile`, `pyproject.toml`, `Cargo.toml`, and `build.gradle`.
+- CI configuration: `.github/workflows/`, `.gitlab-ci.yml`, and `.circleci/`. The commands run in CI are the de facto acceptance criteria.
 
-同样的命令可能有多个别名（`test` vs `test:unit` vs `pytest -q`），选取与改动范围匹配的最小集合，但不要用更弱的命令替换项目明确规定的命令。
+The same command may have multiple aliases (`test` vs `test:unit` vs `pytest -q`). Choose the smallest set matching the scope of the changes, but do not replace explicitly required project commands with weaker ones.
 
-## 风险分级
+## Risk Levels
 
-| 风险 | 典型改动 | 最低验证 |
+| Risk | Typical Changes | Minimum Verification |
 | --- | --- | --- |
-| 低 | 注释、文档、纯文案、日志措辞 | 格式检查或构建（若项目有）；确认引用路径存在 |
-| 中 | 局部逻辑、参数处理、新增分支、单文件重构 | 项目规定的格式化 + 静态检查 + 受影响的单元测试 |
-| 高 | 并发、加密、权限、数据迁移、公共 API、依赖升级、构建与 CI 配置 | 全量测试 + 集成测试 + 真实路径手动验证 + 回滚方案 |
+| Low | Comments, documentation, copy-only changes, log wording | Format checks or build (if the project has them); confirm referenced paths exist |
+| Medium | Local logic, parameter handling, new logic branches, single-file refactoring | Project-required formatting + static checks + affected unit tests |
+| High | Concurrency, encryption, permissions, data migrations, public APIs, dependency upgrades, build and CI configuration | Full tests + integration tests + manual verification of real execution paths + rollback plan |
 
-判断风险看失败的后果，不看改动行数：一行权限判断的改动量很小，但失败后果很严重。
+Assess risk by the consequences of failure, not the number of changed lines: a one-line permission check is a small change but can have severe consequences if it fails.
 
-高风险改动额外要求：
+Additional requirements for high-risk changes:
 
-- 说明验证覆盖了哪些路径，哪些边界情况未覆盖。
-- 涉及数据迁移或删除时，先确认可回滚，或明确说明不可回滚。
-- 依赖升级时，检查 changelog 中的破坏性变更，并在真实调用路径上验证。
+- Explain which paths verification covered and which edge cases remain uncovered.
+- For data migrations or deletion, first confirm that rollback is possible, or explicitly state that it is not.
+- For dependency upgrades, check the changelog for breaking changes and verify real call paths.
 
-## 不能跳过的验证
+## Checks That Cannot Be Skipped
 
-无论风险高低，以下项在改动命中时都必须执行：
+Regardless of risk level, the following are mandatory whenever they apply to the changes:
 
-- 项目规定的格式化与静态检查。格式漂移会让 review diff 淹没真实改动。
-- 变更触及的既有测试。不能因为“看起来无关”就跳过失败的测试。
-- 新增或修改的逻辑至少被一个测试覆盖；确实没有测试基础设施时，用可复现的手动步骤替代，并把步骤写进报告。
-- 提交或 PR/MR 中标注破坏性变更。
-- 发布前的完整构建，或项目定义的等价发布检查。
+- Project-required formatting and static checks. Formatting drift obscures actual changes in the review diff.
+- Existing tests affected by the changes. Do not skip failing tests because they "look unrelated."
+- At least one test covering added or modified logic; if there truly is no test infrastructure, substitute reproducible manual steps and include them in the report.
+- Marking breaking changes in the commit or PR/MR.
+- A full build before release, or an equivalent release check defined by the project.
 
-以下情形不要声称验证通过：
+Do not claim verification passed in these situations:
 
-- 测试需要外部服务、凭据或网络而当前环境无法提供。说明跳过原因和影响面。
-- 只运行了子集。说明跑的是哪一部分。
-- 测试本来就失败。先区分改动引入的失败和既有失败，再如实报告。
+- Tests require external services, credentials, or network access unavailable in the current environment. Explain why they were skipped and the affected scope.
+- Only a subset was run. Specify which part was run.
+- Tests were already failing. First distinguish failures introduced by the changes from existing failures, then report honestly.
 
-## 运行方式
+## How to Run Checks
 
-优先复用项目已安装的依赖和锁定的工具版本，不要为了跑一次测试而全局安装或切换包管理器。项目若规定了 `uv`、`pnpm`、`bundle exec`、`cargo` 等执行方式，遵循它，不要用 `python` / `npm` 直接替代。
+Prefer reusing the project's installed dependencies and pinned tool versions; do not install globally or switch package managers just to run a test once. If the project prescribes execution methods such as `uv`, `pnpm`, `bundle exec`, or `cargo`, follow them rather than directly substituting `python` / `npm`.
 
-需要临时依赖做一次性验证时，用隔离的执行方式（例如 `uv run --with <package>`、`pnpm dlx`），避免污染项目依赖清单。
+When temporary dependencies are needed for one-off verification, use isolated execution (such as `uv run --with <package>` or `pnpm dlx`) to avoid polluting the project's dependency manifest.
 
-## 测试改动本身
+## Changes to Tests Themselves
 
-只在任务要求时新增或调整测试。新增测试时：
+Add or adjust tests only when the task requires it. When adding tests:
 
-- 覆盖改动的真实行为，包括边界和失败路径，而不是只断言实现细节。
-- 沿用项目已有的测试框架、目录结构和命名习惯。
-- 不为了让测试通过而弱化断言、跳过用例或删除既有覆盖。
-- 修复 bug 时优先补一个能复现该 bug 的用例，再确认修复后通过。
+- Cover the changes' actual behavior, including edge cases and failure paths, rather than asserting only implementation details.
+- Follow the project's existing test framework, directory structure, and naming conventions.
+- Do not weaken assertions, skip cases, or remove existing coverage just to make tests pass.
+- When fixing a bug, preferably add a case that reproduces it first, then confirm that it passes after the fix.
 
-删除功能时同步清理对应的测试、fixture 和说明，不要留下断言已删除行为的死测试。
+When removing functionality, also clean up its tests, fixtures, and documentation; do not leave dead tests asserting removed behavior.
 
-## 报告验证结果
+## Reporting Verification Results
 
-报告包含：
+Include in the report:
 
-- 实际运行的命令。
-- 结果摘要：通过数、失败数、跳过的用例及其原因。
-- 未运行的验证项和原因。
-- 手动的验证步骤，让用户能自己复现。
+- Commands actually run.
+- A results summary: pass and failure counts, skipped cases, and reasons for skipping.
+- Checks not run and why.
+- Manual verification steps so the user can reproduce them.
 
-示例表述：
+Example wording:
 
 ```text
-运行：pytest tests/api -q — 42 passed
-运行：ruff check . — 通过
-未运行：集成测试（需要本地数据库，当前环境不可用）
-手动验证：POST /users 返回 201，重复调用返回 409
+Ran: pytest tests/api -q — 42 passed
+Ran: ruff check . — passed
+Not run: integration tests (require a local database unavailable in the current environment)
+Manual verification: POST /users returns 201; a repeated call returns 409
 ```
 
-不要写“已全面测试”这类无法核对的结论。
+Do not write unverifiable conclusions such as "fully tested."

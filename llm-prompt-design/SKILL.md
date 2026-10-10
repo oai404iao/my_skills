@@ -1,39 +1,39 @@
 ---
 name: llm-prompt-design
-description: 设计、改进或评审 LLM 提示词与提示词工程方案，包括文本/代码/检索任务、gen_image 生图与图片编辑、LLM tool 的 schema/description，以及结构化响应的 schema 和 prompt 引导。适用于需要比较方案、给出可复用模板或诊断输出不稳的请求；不因普通问答、执行现成工具或生成一张图片而自动改写提示词，也不代替目标平台的 API 契约。
+description: Design, improve, or review LLM prompts and prompt-engineering approaches, including text/code/retrieval tasks, gen_image generation and image editing, LLM tool schemas/descriptions, and schemas and prompt guidance for structured responses. Use for requests to compare approaches, provide reusable templates, or diagnose unstable outputs; do not automatically rewrite prompts for ordinary questions, running existing tools, or generating a single image, and do not replace the target platform's API contract.
 ---
 
-# LLM 提示词设计
+# LLM Prompt Design
 
-交付能在目标任务中使用、检查和迭代的提示词或接口契约，而非万能关键词清单。已有项目指令、模型能力、调用方数据契约和用户指定的输出优先；本 skill 的模板只是起点。用户只要方案时不写入项目、调用付费模型或执行工具；实现请求才按授权范围修改。
+Deliver prompts or interface contracts that can be used, checked, and iterated on for the target task, not a universal keyword list. Existing project instructions, model capabilities, caller data contracts, and user-specified outputs take precedence; this skill's templates are only starting points. When the user only wants an approach, do not write to the project, call paid models, or execute tools; make changes only for implementation requests and within the authorized scope.
 
-## 先定任务与成功条件
+## Define the task and success criteria first
 
-1. 判断目标是新写、优化还是评审；识别输入、受众、输出、不可变约束、模型/API、是否有真实数据或失败样本。对低风险空缺作明确假设；模型能力、写操作权限或必须匹配的生产契约不明且影响结果时先询问。
-2. 确认是**生成图片**还是非 `gen_image`：看图问答、OCR、图像分类属于非生图的理解/抽取；修改现有图片属于 `gen_image` 的编辑。工具调用和结构化响应是可能与前两类叠加的**接口任务**，不混为一种 prompt。
-3. 写下可观察的验收条件：正确性、依据、完整性、格式、视觉构图/文字保真、延迟或成本；没有基线时先给最小提示词和少量代表性样例，不假称已有量化提升。
+1. Determine whether the goal is creation, optimization, or review; identify inputs, audience, outputs, immutable constraints, model/API, and whether real data or failure samples are available. State assumptions for low-risk gaps; ask first when uncertainty about model capabilities, write permissions, or a production contract that must be matched affects the result.
+2. Determine whether the task is **image generation** or non-`gen_image`: visual question answering, OCR, and image classification are non-generation understanding/extraction tasks; modifying existing images is `gen_image` editing. Tool calling and structured responses are **interface tasks** that may overlap with either category; do not treat them as one kind of prompt.
+3. Write observable acceptance criteria: correctness, supporting evidence, completeness, format, visual composition/text fidelity, latency, or cost. Without a baseline, start with a minimal prompt and a few representative samples; do not claim measured improvements.
 
-## 按需读取，不加载整个目录
+## Read on demand, not the entire directory
 
-| 情况 | 阅读路径 |
+| Situation | Reading path |
 | --- | --- |
-| 所有需要设计的任务 | [基础契约](references/foundations.md) → [方案选择](references/strategy-selection.md) |
-| 分类、抽取、问答、检索、摘要、写作、翻译、代码 | [非生图示例](references/tasks/non-gen-image.md) |
-| 文生图、参考图生成、图片编辑 | [生图示例](references/tasks/gen-image.md) |
-| 编写、调整工具名称、描述、参数 | [工具契约](references/interfaces/tool-schema.md) |
-| 机器可解析的最终回答、`response_format` / `text.format` | [结构化响应](references/interfaces/structured-output.md) |
-| 要做 A/B 对比、诊断失败、上线优化 | [评估与迭代](references/engineering/evaluation.md) |
-| 评审或维护 prompt、response schema 及其测试 | [通用反模式与反例](references/engineering/anti-patterns.md) |
-| 要提供某平台的实际请求字段或讨论迁移 | [平台差异](references/engineering/provider-compatibility.md)，并核对当前官方文档 |
-| 要追溯采用依据、许可证 | [来源说明](references/sources.md) |
+| All tasks requiring design | [Foundational contracts](references/foundations.md) → [Strategy selection](references/strategy-selection.md) |
+| Classification, extraction, question answering, retrieval, summarization, writing, translation, code | [Non-image-generation examples](references/tasks/non-gen-image.md) |
+| Text-to-image, reference-based generation, image editing | [Image-generation examples](references/tasks/gen-image.md) |
+| Writing or adjusting tool names, descriptions, parameters | [Tool contracts](references/interfaces/tool-schema.md) |
+| Machine-parseable final answers, `response_format` / `text.format` | [Structured responses](references/interfaces/structured-output.md) |
+| A/B comparisons, failure diagnosis, production optimization | [Evaluation and iteration](references/engineering/evaluation.md) |
+| Reviewing or maintaining prompts, response schemas, and their tests | [Common anti-patterns and counterexamples](references/engineering/anti-patterns.md) |
+| Providing actual request fields for a platform or discussing migration | [Platform differences](references/engineering/provider-compatibility.md), and check current official documentation |
+| Tracing supporting sources or licenses | [Sources](references/sources.md) |
 
-引用文档可互相指向更具体的示例；不因仅需写一段文案就先读所有接口和平台资料。
+Reference documents may link to more specific examples; do not read all interface and platform material first when the task only requires a piece of copy.
 
-## 方案与交付
+## Approach and deliverables
 
-- 先用直接、具体的指令和必要的上下文做基线；只在失败样本表明需要时加入 few-shot、拆步、检索、工具或结构化约束。缺乏外部事实应改善信息来源，不靠反复声明“不要幻觉”。视觉任务按主体、构图和用途优先添加细节，不强制填写全部槽位。
-- 比较多个方案时说明各自的适用条件、**预期**作用、副作用与验证方式；不要将某模型或某评测集的观察结果当作跨平台保证。提示词无法代替后端权限校验、JSON Schema 校验、事实核验或图像人工验收。
-- 默认交付：可复制的提示词/契约、变量和示例输入的边界、关键选择及不选的备选方案、验收样本和未验证事项。若用户只要评审，则只给发现与修改建议；若只要一条提示词，缩减解释和流程。
-- 用户要求可执行 API 示例时，确认使用的服务、API 类型、模型和 SDK 版本；不把 OpenAI、Claude、Gemini 的参数名拼成一个“通用请求”，也不将工具 schema 冒充最终回答 schema。
+- Establish a baseline with direct, specific instructions and necessary context; add few-shot examples, decomposition, retrieval, tools, or structured constraints only when failure samples show a need. Missing external facts call for better information sources, not repeated declarations of "do not hallucinate." For visual tasks, prioritize details by subject, composition, and purpose rather than requiring every slot to be filled.
+- When comparing approaches, explain each one's applicability, **expected** effects, side effects, and validation method; do not treat observations from one model or benchmark as cross-platform guarantees. Prompts cannot replace backend permission checks, JSON Schema validation, fact-checking, or human image acceptance.
+- Default deliverables: a copyable prompt/contract, boundaries for variables and example inputs, key choices and rejected alternatives, acceptance samples, and unverified items. If the user only wants a review, provide findings and suggested changes only; if they only want one prompt, reduce explanation and process.
+- When the user requests executable API examples, confirm the service, API type, model, and SDK version; do not combine OpenAI, Claude, and Gemini parameter names into a "universal request" or present a tool schema as a final-answer schema.
 
-来源为本地重写的任务指南，不是第三方文档的转录；具体依据见 [来源说明](references/sources.md)。
+This is a locally rewritten task guide, not a transcription of third-party documentation; see [Sources](references/sources.md) for its specific basis.

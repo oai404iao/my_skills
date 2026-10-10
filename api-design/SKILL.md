@@ -1,76 +1,76 @@
 ---
 name: api-design
-description: 设计、评审或迁移 HTTP API 的资源路径与接口命名、批量写入、首次初始化、复杂检索、文件上传、分页和请求契约；明确要求应用层报文加密时也适用（按需读取 SM2+SM4 实现契约）。适用于 JSON 与 multipart/form-data 接口新增、REST 风格调整、OpenAPI 审查和旧接口重构；不适用于内部函数命名或 SSE 协议设计。
+description: Design, review, or migrate HTTP API resource paths and endpoint names, batch writes, first-time initialization, complex searches, file uploads, pagination, and request contracts; also applies when application-layer message encryption is explicitly required (read the SM2+SM4 implementation contract as needed). Use for new JSON and multipart/form-data endpoints, REST-style adjustments, OpenAPI reviews, and legacy endpoint refactoring; not for internal function naming or SSE protocol design.
 ---
 
-# API 设计规范
+# API Design Guidelines
 
-## 适用范围与依据
+## Scope and Basis
 
-针对对外或有独立调用方的内部 HTTP API（JSON 请求/响应及 multipart 文件上传）的设计或评审，先读目标仓库已有的 API 文档、OpenAPI/路由、调用方和兼容性约束。已有契约优先于本 skill 的通用建议；不要为了风格统一擅自破坏客户端。先区分新接口、已有接口的兼容扩展和破坏性迁移，再输出方案或按请求实现。
+When designing or reviewing external HTTP APIs or internal HTTP APIs with independent callers (JSON requests/responses and multipart file uploads), first read the target repository's existing API documentation, OpenAPI/routes, callers, and compatibility constraints. Existing contracts take precedence over this skill's general recommendations; do not break clients without authorization merely to unify style. First distinguish new endpoints, compatible extensions to existing endpoints, and breaking migrations, then propose a design or implement it as requested.
 
-本 skill 提供可选的设计基线，不自动把某种版本前缀、鉴权方式或分页形状升级为目标项目的强制规则。HTTP 方法与状态码参考 [RFC 9110](https://www.rfc-editor.org/rfc/rfc9110.html)，错误表示参考 [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457.html)；分页与兼容性取舍可参考 [Zalando RESTful API Guidelines](https://opensource.zalando.com/restful-api-guidelines/)，但其组织约定不是目标项目的规范。
+This skill provides an optional design baseline; it does not automatically make any particular version prefix, authentication scheme, or pagination shape mandatory in the target project. Refer to [RFC 9110](https://www.rfc-editor.org/rfc/rfc9110.html) for HTTP methods and status codes, and [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457.html) for error representations. The [Zalando RESTful API Guidelines](https://opensource.zalando.com/restful-api-guidelines/) can inform pagination and compatibility trade-offs, but their organizational conventions are not the target project's rules.
 
-## 1. 接口名称与路径
+## 1. Endpoint Names and Paths
 
-- 用 `HTTP 方法 + 资源路径` 表达接口，而不是把动词拼进 URL。集合路径使用小写复数名词，多词段用连字符；资源标识符用不含可变业务语义的不透明 ID。
-- 版本前缀如 `/api/v1` 是一种选择；沿用目标项目的版本策略。只有父子归属真实、稳定时才嵌套，不为展示或查询关系制造深层路径。
-- `GET /agents` 列表、`GET /agents/{agent_id}` 详情、`POST /conversations` 创建、`PATCH /conversations/{conversation_id}` 局部修改、`DELETE /.../{id}` 删除。完整替换或由调用方指定稳定 ID 的写入可用 `PUT`；不要把 `PATCH` 当作无条件创建。
-- 无法自然映射为 CRUD 的领域动作，可定义明确的子资源或命令端点，例如 `POST /conversations/{conversation_id}/runs` 创建运行，避免 `GET /executeRun` 产生副作用；批量写入的集合命令见下文。命令必须明确输入、可重试语义和结果；需要后续查询时还须定义查询方式。
-- `GET` 用于读取，不承担业务写入；检查方法的安全性/幂等性和实际副作用。`POST` 不天然幂等；有重复副作用风险时按项目契约支持 `Idempotency-Key` 或明确说明例外。
-- 命名检查：相同概念在路径、参数、响应中用一致术语；不要暴露数据库表名、内部主键策略或上游业务系统路径。不要把业务动作强行重命名为虚假的 CRUD。
+- Express endpoints as `HTTP method + resource path`, rather than inserting verbs into URLs. Use lowercase plural nouns for collection paths and hyphens for multiword segments; use opaque resource IDs without mutable business semantics.
+- A version prefix such as `/api/v1` is one option; follow the target project's versioning strategy. Nest resources only when the parent-child ownership is real and stable; do not create deeply nested paths for display or query relationships.
+- `GET /agents` lists resources, `GET /agents/{agent_id}` retrieves details, `POST /conversations` creates a resource, `PATCH /conversations/{conversation_id}` partially updates one, and `DELETE /.../{id}` deletes one. `PUT` can be used for full replacement or writes with a stable caller-specified ID; do not treat `PATCH` as unconditional creation.
+- For domain actions that do not naturally map to CRUD, you can define explicit subresources or command endpoints, such as `POST /conversations/{conversation_id}/runs` to create a run; avoid side effects from `GET /executeRun`. Collection commands for batch writes are covered below. Commands must specify inputs, retry semantics, and results; if subsequent querying is needed, define how to query them as well.
+- Use `GET` for reading, not business writes; check method safety/idempotency against actual side effects. `POST` is not inherently idempotent; where duplicate side effects are a risk, support `Idempotency-Key` under the project contract or explicitly document the exception.
+- Naming checks: use consistent terminology for the same concept in paths, parameters, and responses; do not expose database table names, internal primary-key strategies, or upstream business-system paths. Do not forcibly rename business actions as artificial CRUD operations.
 
-## 2. 参数放置与校验
+## 2. Parameter Placement and Validation
 
-| 位置 | 放什么 | 示例 |
+| Location | Contents | Example |
 | --- | --- | --- |
-| 路径 | 必需的资源身份、稳定父子关系 | `/agents/{agent_id}/bindings` |
-| 查询 | 列表分页、筛选、排序、可选读取投影 | `?status=published&page=2&page_size=20` |
-| JSON 请求体 | 创建/修改字段、结构化命令、批量项 | `{"agent_id":"agent-a","title":"First chat"}` |
-| multipart 请求体 | 文件 part 及相应的表单/JSON 元数据 | `attachment` 文件、`external_ref` 文本字段 |
-| 请求头 | 鉴权、请求追踪、幂等性等传输元数据 | `Authorization: Bearer ...`、`X-Request-Id`、`Idempotency-Key` |
+| Path | Required resource identity, stable parent-child relationships | `/agents/{agent_id}/bindings` |
+| Query | List pagination, filtering, sorting, optional read projections | `?status=published&page=2&page_size=20` |
+| JSON request body | Creation/update fields, structured commands, batch items | `{"agent_id":"agent-a","title":"First chat"}` |
+| multipart request body | File parts and corresponding form/JSON metadata | `attachment` file, `external_ref` text field |
+| Headers | Transport metadata such as authentication, request tracing, and idempotency | `Authorization: Bearer ...`, `X-Request-Id`, `Idempotency-Key` |
 
-- 字段名称优先清晰的业务含义；新设计可采用 JSON/查询字段 `snake_case`（如 `agent_id`、`created_after`、`page_size`），URL 段用连字符；但须服从目标项目既有命名约定。不要让同一个参数兼有多种含义；排序字段和方向需列举、校验，例：`sort=-created_at`。
-- 明确类型、是否必填、默认值、允许范围、枚举、空字符串与 `null` 的区别，以及无效值/未知字段的处理。新写入体宜用明确的、操作专属的对象模型；未知字段是拒绝、忽略还是允许扩展，按项目契约选择并记录，避免误拼写被静默接受。已有接口不擅改此行为。JSON 请求体不必添加无意义的通用 `data`/`request` 包装，顶层用对象更易演进。
-- 调用者身份与授权租户范围从可信认证上下文获取，不让调用者在业务参数中冒充。经授权创建外部服务连接等场景，服务配置或凭证可以是业务输入，但须定义权限、敏感信息保护和响应脱敏。查询筛选的授权范围由服务端验证；如管理员接口确需 `tenant_id`，须单独定义权限语义。
-- 明确边界：分页和筛选归查询参数（`GET`），复杂搜索命令或工具可把相同分页字段放在 JSON 体；数组是否分页取决于它是不是可继续读取的列表，不是见到 `items` 就机械加分页。
-- 修改公开字段、默认值或验证规则前核对客户端与 OpenAPI；破坏性更名需迁移/版本策略，不能暗中同时接受一组未文档化别名。
+- Prefer field names with clear business meaning. New designs may use `snake_case` for JSON/query fields (such as `agent_id`, `created_after`, and `page_size`) and hyphens for URL segments, but must follow the target project's existing naming conventions. Do not give a single parameter multiple meanings; enumerate and validate sorting fields and directions, for example `sort=-created_at`.
+- Specify types, requiredness, defaults, allowed ranges, enums, the distinction between empty strings and `null`, and the handling of invalid values/unknown fields. New write bodies should use explicit, operation-specific object models. Choose and document whether unknown fields are rejected, ignored, or allowed as extensions under the project contract, avoiding silent acceptance of typos. Do not change this behavior in existing endpoints without authorization. JSON request bodies do not need meaningless generic `data`/`request` wrappers; top-level objects are easier to evolve.
+- Obtain caller identity and authorized tenant scope from trusted authentication context; do not let callers impersonate them through business parameters. For scenarios such as authorized creation of external service connections, service configuration or credentials can be business inputs, but permissions, sensitive-information protection, and response redaction must be defined. The server validates the authorized scope of query filters; if an administrative endpoint genuinely needs `tenant_id`, define its permission semantics separately.
+- Clarify boundaries: pagination and filtering belong in query parameters (`GET`); complex search commands or tools may put the same pagination fields in a JSON body. Whether an array needs pagination depends on whether it is a list that supports continued reading, not merely on the presence of `items`.
+- Check clients and OpenAPI before changing public fields, defaults, or validation rules. Breaking renames require a migration/versioning strategy; do not silently accept a set of undocumented aliases.
 
-## 3. 批量写入（创建、更新、删除）
+## 3. Batch Writes (Create, Update, Delete)
 
-HTTP 没有统一规定多资源写入的路径和结果形状；先核对项目已有单项接口与客户端需求，不为少量写入强制增加批量端点。按同一集合批量操作时，可参考 Google [Batch Create](https://google.aip.dev/233)、[Batch Update](https://google.aip.dev/234)、[Batch Delete](https://google.aip.dev/235) 的 HTTP 映射：`POST /agents:batchCreate`、`POST /agents:batchUpdate`、`POST /agents:batchDelete`。这些是 Google 的 RPC/HTTP 设计约定，不是 REST 强制命名；也可沿用目标项目已有路径风格。不要把 `DELETE /agents` 默认为删除指定的一批资源；新接口不依赖 `DELETE` 请求体传 ID 列表（[RFC 9110 §9.3.5](https://www.rfc-editor.org/rfc/rfc9110.html#section-9.3.5) 未给其通用语义）。
+HTTP does not prescribe a universal path or result shape for multi-resource writes. First check the project's existing single-item endpoints and client needs; do not require batch endpoints for small numbers of writes. For batch operations on the same collection, the HTTP mappings in Google's [Batch Create](https://google.aip.dev/233), [Batch Update](https://google.aip.dev/234), and [Batch Delete](https://google.aip.dev/235) can serve as references: `POST /agents:batchCreate`, `POST /agents:batchUpdate`, and `POST /agents:batchDelete`. These are Google's RPC/HTTP design conventions, not mandatory REST naming; the target project's existing path style is also an option. Do not assume `DELETE /agents` means deleting a specified batch of resources. New endpoints must not rely on a `DELETE` request body to pass an ID list ([RFC 9110 §9.3.5](https://www.rfc-editor.org/rfc/rfc9110.html#section-9.3.5) gives it no general semantics).
 
-- **请求项**：创建传各项创建内容；更新传各项稳定 ID、修改字段及必要的版本前提，明确是局部修改还是完整替换、缺失字段与 `null` 的语义；删除传明确的 ID 列表，如每项有不同前提则传逐项请求。若端点限定共享父资源/租户，核对每项归属；无论是否跨父资源，都要逐项授权。筛选条件删除是另一种高风险契约，不能暗中把列表筛选当作删除范围。
-- **边界**：定义空批次、最大项数及请求大小、重复 ID、同一资源的多次操作、执行顺序和并发冲突的处理。上限按实际能力确定，不照搬示例数字；不要承诺无法跨上游或存储实现的事务原子性。
-- **完成语义**：在设计时选定全有全无（失败则回滚）或允许部分成功，不能在旧接口上悄悄切换。Google 上述 AIP 规定其**同步**批量方法原子，异步方法可部分成功；这不是所有 HTTP API 的要求。部分成功时，逐项结果须用输入索引或客户端提供的唯一标识关联到请求，并给出成功结果或稳定错误，不能只返回一个“成功”状态让客户端猜测哪些项已生效。
-- **状态与重试**：整批无效/未授权与逐项失败分开表示。同步原子成功按项目契约选择 `200`/`201`，确实无需返回信息才用 `204`；批量创建若由服务端分配 ID，须返回与输入对应的 ID/资源或明确可查询方式。逐项处理可参考 [Zalando 的 `207` 加逐项状态](https://opensource.zalando.com/restful-api-guidelines/) 或 [Microsoft Graph 的 `200` 加逐项状态](https://learn.microsoft.com/en-us/graph/json-batching) 等方案：选定后不因本批恰好全成功或全失败而随意变换外层状态，客户端须检查逐项结果；这些都不是 HTTP 通则。异步受理可用 `202` 并返回可查询的任务标识与最终逐项结果。明确幂等键作用域、重复提交及超时后整批重试规则，避免再次执行已成功项；仅重试失败项时须定义新的请求与幂等键关系。
+- **Request items**: for creation, pass each item's creation content; for updates, pass each item's stable ID, changed fields, and any necessary version preconditions, and clarify partial update versus full replacement and the semantics of absent fields and `null`; for deletion, pass an explicit ID list, or individual requests if items have different preconditions. If the endpoint is restricted to a shared parent resource/tenant, check each item's ownership. Authorize each item regardless of whether the batch spans parent resources. Deletion by filter is a separate high-risk contract; do not silently treat list filters as the deletion scope.
+- **Boundaries**: define handling for empty batches, maximum item counts and request size, duplicate IDs, multiple operations on the same resource, execution order, and concurrency conflicts. Set limits according to actual capacity rather than copying example numbers; do not promise transactional atomicity that cannot be implemented across upstream systems or storage.
+- **Completion semantics**: choose all-or-nothing (rollback on failure) or partial success at design time; do not silently switch an existing endpoint. The Google AIPs above require their **synchronous** batch methods to be atomic and allow partial success for asynchronous methods; this is not a requirement for all HTTP APIs. With partial success, correlate each item result to its request using the input index or a client-supplied unique identifier, and provide either a successful result or a stable error. Do not return only a single "success" status and leave clients guessing which items took effect.
+- **Status and retries**: distinguish whole-batch invalidity/lack of authorization from per-item failures. For synchronous atomic success, choose `200`/`201` under the project contract; use `204` only when no information needs to be returned. If the server assigns IDs for batch creation, return IDs/resources correlated to the input or define how they can be queried. For per-item processing, possible references include [Zalando's `207` with per-item statuses](https://opensource.zalando.com/restful-api-guidelines/) and [Microsoft Graph's `200` with per-item statuses](https://learn.microsoft.com/en-us/graph/json-batching): once chosen, do not arbitrarily change the outer status just because a particular batch wholly succeeds or fails; clients must inspect per-item results. Neither is a universal HTTP rule. Asynchronous acceptance may use `202` and return a queryable task identifier and eventual per-item results. Specify the idempotency-key scope, duplicate submissions, and whole-batch retries after timeouts to avoid re-executing successful items. When retrying only failed items, define the relationship between the new request and its idempotency key.
 
-## 4. 首次初始化与异步任务
+## 4. First-Time Initialization and Asynchronous Tasks
 
-- 先区分普通资源创建和需要外部标识、文件或长耗时处理的“首次初始化”。简单同步创建仍可用 `POST /profiles`；有独立业务语义时可按项目风格定义 `POST /profiles:initialize` 或初始化任务资源，不把首建、补全和替换悄悄混为一次 upsert。命令端点只是可选约定，参照 [Google AIP-136](https://google.aip.dev/136) 而非当成 REST 强制格式。
-- 明确资源不存在、部分初始化、已初始化和并发重复提交时的行为；按授权范围核对外部 ID 的唯一性与归属，已有数据不得被“首次初始化”意外覆盖。若更新与恢复的校验/副作用不同，应分别建模；可能覆盖新状态时定义版本前提或等效并发保护。
-- `202 Accepted` 只表示请求已受理，不表示初始化成功或作业可跨进程重启恢复。返回可查询的任务标识（或项目既有状态查询方式），说明成功结果、最终失败、部分失败、超时及重试语义；任务查询仍需鉴权。若输入文件仅临时保存在进程内，应明确重启后作业结局及再次提交时是否必须重传文件，不凭已持久化的任务元数据声称能重放。
-- 若允许客户端指定回调 URL，定义可查询的最终状态与回调交付/重试边界；回调地址是不可信输入，须按 [OWASP SSRF 指南](https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html) 防护，并保护回调密钥及日志。幂等键应约束调用者、操作及请求内容，不能只因外部 ID 相同就把不同文件视为同一请求。
+- First distinguish ordinary resource creation from "first-time initialization" requiring external identifiers, files, or lengthy processing. Simple synchronous creation can still use `POST /profiles`; where initialization has independent business semantics, use the project's style to define `POST /profiles:initialize` or an initialization task resource. Do not silently combine initial creation, completion of missing data, and replacement into one upsert. Command endpoints are merely an optional convention; refer to [Google AIP-136](https://google.aip.dev/136) rather than treating it as mandatory REST syntax.
+- Define behavior when a resource does not exist, is partially initialized, is already initialized, or receives concurrent duplicate submissions. Check external ID uniqueness and ownership within the authorization scope; "first-time initialization" must not accidentally overwrite existing data. If updates and recovery differ in validation/side effects, model them separately. Define version preconditions or equivalent concurrency protection where newer state might be overwritten.
+- `202 Accepted` only means the request was accepted, not that initialization succeeded or that the job can recover across process restarts. Return a queryable task identifier (or use the project's existing status-query mechanism), and specify successful results, terminal failure, partial failure, timeouts, and retry semantics; task queries still require authentication. If input files are held only temporarily in process memory, clarify what happens to the job after a restart and whether resubmission requires uploading the files again. Do not claim replayability merely because task metadata is persisted.
+- If client-specified callback URLs are allowed, define queryable final status and callback delivery/retry boundaries. Callback addresses are untrusted input; apply the [OWASP SSRF guidance](https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html), and protect callback secrets and logs. Idempotency keys should bind the caller, operation, and request content; different files must not be considered the same request merely because their external IDs match.
 
-## 5. 复杂检索
+## 5. Complex Searches
 
-- 简单列表筛选优先沿用 `GET` 查询参数；当组合条件、向量/全文检索或长请求无法清晰放入查询串时，可按项目风格使用 JSON `POST /assets:search`（[Google AIP-136](https://google.aip.dev/136) 亦允许复杂读取用 `POST`）。检索仍是读取，不因采用 `POST` 而产生业务写入；但不能套用 `GET` 的默认缓存/重试假设，也不要为每种条件组合另造端点。
-- 逐字段定义至少一个条件是否必需、空数组/空字符串如何处理、多条件是交集还是并集、文本相似度与结构化过滤的先后顺序，以及默认排序/允许的排序字段。相关性分数、距离阈值和命中来源须说明含义与可比范围；不同检索模式若排序不同，应明示，不能凭空给已有接口新增 `mode`/`sort`。
-- 结果扩展（如关联明细）需定义启用条件、每项上限和被截断时的表示，不把扩展项数量误当主列表的总数。游标应绑定授权范围、筛选与排序等影响结果的条件，并定义过期或变更后的处理；分页仍使用确定性并列值决胜字段，不因换成 `POST` 就放弃连续读取契约。筛选字段不能扩大认证主体可见的数据范围。
+- Prefer existing `GET` query parameters for simple list filtering. When combined conditions, vector/full-text search, or long requests cannot be clearly represented in a query string, you can use a JSON `POST /assets:search` in the project's style ([Google AIP-136](https://google.aip.dev/136) also permits `POST` for complex reads). Searching remains a read and must not cause business writes merely because it uses `POST`; however, do not apply `GET`'s default caching/retry assumptions, or create a separate endpoint for every combination of conditions.
+- Define, field by field, whether at least one condition is required, how empty arrays/strings are handled, whether multiple conditions form an intersection or union, the order of text similarity and structured filtering, and the default sort/allowed sorting fields. Explain the meanings and comparable ranges of relevance scores, distance thresholds, and match sources. If search modes sort differently, say so explicitly; do not invent `mode`/`sort` for an existing endpoint.
+- Result expansions (such as related details) need defined activation conditions, per-item limits, and a representation for truncation; do not mistake the number of expansion items for the main list's total count. Bind cursors to authorization scope, filters, sorting, and other conditions affecting results, and define how expiry or changes are handled. Pagination still requires deterministic tie-breaker fields; using `POST` does not remove the continued-reading contract. Filter fields must not expand the data visible to the authenticated principal.
 
-## 6. 文件上传与元数据
+## 6. File Uploads and Metadata
 
-- 先区分“持久化文件资源”与“仅把文件作为本次处理输入”，不要从上传动作推断服务会保存原始字节或提供下载地址。文件及元数据同请求时可用 `multipart/form-data`；元数据可作为 `application/json` part，也可作为承载 JSON 文本的表单字段，须明确字段类型与解析规则。大文件或可恢复上传需另定传输与存储契约。文档和 OpenAPI 必须写明各 part 名称、媒体类型、解析规则与必填性，不能把 multipart 中的 JSON 文本误写为整个请求的 `application/json`（见 [OpenAPI multipart 编码](https://spec.openapis.org/oas/v3.1.1.html#encoding-multipart-media-types)）。
-- 多文件与逐项元数据需要对应时，用明确的文件引用/part 名称或已约定的重复字段匹配规则；定义缺失、重复或未引用 part 的处理，不靠未文档化的文件顺序猜测。`multipart/form-data` 允许重复字段名，不能将“重复字段一律非法”当成协议规则（[RFC 7578](https://www.rfc-editor.org/rfc/rfc7578.html#section-5.2)）。
-- 按实际能力分别定义单文件、单请求总大小和批量项数限制，校验空文件、内容类型与真实内容；文件名和客户端提供的 `Content-Type` 不可作为可信验证依据。明确临时内存/磁盘/对象存储的生命周期、清理与敏感信息保护；按 [OWASP 文件上传指南](https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html) 评估安全限制。异步处理还须与上节的作业可恢复性一致，不能仅凭 `202` 假定文件可重试。
+- First distinguish "persisted file resources" from "files used only as input for this processing request." Do not infer from an upload that the service stores the original bytes or provides download URLs. `multipart/form-data` can be used when files and metadata share a request. Metadata may be an `application/json` part or a form field containing JSON text; specify field types and parsing rules. Large files or resumable uploads require separate transport and storage contracts. Documentation and OpenAPI must specify each part's name, media type, parsing rules, and requiredness; do not misrepresent JSON text within multipart as `application/json` for the entire request (see [OpenAPI multipart encoding](https://spec.openapis.org/oas/v3.1.1.html#encoding-multipart-media-types)).
+- When multiple files need to match per-item metadata, use explicit file references/part names or agreed matching rules for repeated fields. Define handling for missing, duplicate, or unreferenced parts rather than guessing from undocumented file order. `multipart/form-data` allows repeated field names; "all duplicate fields are invalid" is not a protocol rule ([RFC 7578](https://www.rfc-editor.org/rfc/rfc7578.html#section-5.2)).
+- Define separate limits for individual files, total request size, and batch item counts according to actual capacity; validate empty files, content types, and actual content. Filenames and client-supplied `Content-Type` are not trusted validation evidence. Specify the lifecycle, cleanup, and sensitive-information protection of temporary memory/disk/object storage; evaluate security restrictions using the [OWASP file upload guidance](https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html). Asynchronous processing must also agree with job recoverability in the previous section; `202` alone does not imply files can be retried.
 
-## 7. 分页设计
+## 7. Pagination Design
 
-先判断列表规模、数据变动频率、调用方是否需要跳页或只需顺序遍历，以及上游继续读取和计算总数的成本。需要跳页且能接受页间插删造成的重复/遗漏时，可选择页号分页；大型或频繁变化、主要顺序遍历的列表可考虑游标分页。游标应对客户端不透明，约束筛选与排序，并在每页检查授权；不默认承诺快照一致性。新列表应从首次发布时确定分页契约；给原本返回全集的旧接口加默认分页会改变行为，须按下文迁移流程处理。
+First assess list size, data-change frequency, whether callers need random page access or only sequential traversal, and the cost of continued upstream reading and total counts. Page-number pagination is an option when random page access is needed and duplicates/omissions caused by insertions/deletions between pages are acceptable. Consider cursor pagination for large or frequently changing lists mainly traversed sequentially. Cursors should be opaque to clients, constrain filtering and sorting, and require authorization checks on every page; do not promise snapshot consistency by default. New lists should define their pagination contract from first release. Adding default pagination to a legacy endpoint that returned the full dataset changes behavior and requires the migration process below.
 
-当选择页号分页时，可采用一基 `page`（默认 `1`）和有服务端上限的正整数 `page_size`；默认大小和上限由所属接口明确给出，不把示例值 `20`/`100` 当通用定律。一个端点只定义一种公开分页协议，避免同时提供未说明的 `limit`、`offset`、`cursor`、`next_cursor` 别名（内部 SQL offset 不受此限）。已有游标分页应遵循其现有契约，或明确进入下文迁移流程，不强行按页号改写。
+If page-number pagination is chosen, one option is a one-based `page` (default `1`) and a positive integer `page_size` with a server-side maximum. The owning endpoint must explicitly define its default size and maximum; example values `20`/`100` are not universal rules. Define only one public pagination protocol per endpoint; avoid simultaneously providing unexplained `limit`, `offset`, `cursor`, and `next_cursor` aliases (internal SQL offsets are not subject to this restriction). Existing cursor pagination should follow its current contract or explicitly enter the migration process below; do not forcibly rewrite it as page-number pagination.
 
-选择页号方案时，一种简明的列表响应为：
+For a page-number scheme, one concise list response is:
 
 ```json
 {
@@ -83,36 +83,36 @@ HTTP 没有统一规定多资源写入的路径和结果形状；先核对项目
 }
 ```
 
-- 示例不是强制响应格式，`items` 应始终是数组；`returned_count` 可由 `items` 长度得出，`total_count` 只在调用方确需且服务端能合理提供时加入。若提供估算值或下界，另行定义其语义（如 `total_count_is_exact`），不能虚报精确总数。
-- 若采用 `has_more`，`false` 应表示已知到达末尾，`true` 应表示调用者可以保持相同筛选/排序请求 `page+1`（下一页可能因并发变化为空）。遇到上游截断且无法继续读取或判定末尾时，不能用普通响应中的 `has_more=false` 冒充遍历完成；按契约返回明确的截断状态或错误。
-- 排序需确定且有稳定的并列值决胜字段；如提供总数，它应与 `items` 使用相同筛选及授权范围，每一页重新做权限检查。普通页号读取不保证并发修改下的快照一致性，若需要更强保证须单独设计。
-- 有界结构数组和变更操作结果不伪装成分页列表；SSE 流、追加日志回放中的 `after`、`seq` 等是协议位置而非列表页号。不要将回放位置塞进普通列表分页响应。
+- The example is not a mandatory response format. `items` should always be an array; `returned_count` can be derived from its length, and `total_count` should be included only when callers genuinely need it and the server can reasonably provide it. If supplying an estimate or lower bound, define its semantics separately (for example `total_count_is_exact`); do not falsely report an exact total.
+- When using `has_more`, `false` should mean the end is known to have been reached, and `true` should mean the caller can request `page+1` with the same filtering/sorting (the next page may be empty due to concurrent changes). If upstream truncation prevents continued reading or determining the end, do not use `has_more=false` in a normal response to pretend traversal is complete; return an explicit truncation status or error under the contract.
+- Sorting must be deterministic with stable tie-breaker fields. If a total is provided, it should use the same filtering and authorization scope as `items`; recheck permissions on every page. Ordinary page-number reads do not guarantee snapshot consistency under concurrent changes; stronger guarantees require separate design.
+- Do not disguise bounded structural arrays or mutation results as paginated lists. `after`, `seq`, and similar values in SSE streams or append-only log replay are protocol positions, not list page numbers. Do not insert replay positions into ordinary list-pagination responses.
 
-## 8. 响应与错误
+## 8. Responses and Errors
 
-- 新接口单资源成功宜返回资源对象本身，不增加无意义的 `{"code":0,"data":...}` 包装；创建通常 `201`，同步更新/读取通常 `200`，接受异步处理 `202`，确实无需响应体才用 `204`。异步任务返回稳定标识符以便查询。
-- 错误使用合适的 HTTP 状态码；可采用 `application/problem+json` 的 Problem Details。区分 `400` 无效请求（项目约定时可用 `422` 区分语义校验）、`401` 未认证、`403` 无权限、`404` 不存在、`409` 冲突等；不要把所有错误写成 `200`。使用 Problem Details 时按 RFC 9457 定义稳定的错误 `type`（未提供时默认为 `about:blank`）；若提供 `status`，须与实际 HTTP 状态一致。`title` 宜为稳定摘要，按需添加 `detail`、`instance` 以及安全、明确的 `error_code` 和 `request_id`；客户端依赖稳定类型/代码而非 `detail` 文案。
-- 不把密钥、原始请求敏感内容、异常堆栈或 SQL 塞进错误扩展。受保护接口按项目认证方案定义授权及 OpenAPI 中的请求/响应、鉴权、主要错误。
+- For new endpoints, successful single-resource responses should return the resource object itself, without meaningless `{"code":0,"data":...}` wrappers. Creation usually uses `201`, synchronous updates/reads usually use `200`, asynchronous acceptance uses `202`, and `204` is reserved for cases that genuinely need no response body. Asynchronous tasks return stable identifiers for querying.
+- Use appropriate HTTP status codes for errors; `application/problem+json` Problem Details is an option. Distinguish `400` invalid request (project conventions may use `422` for semantic validation), `401` unauthenticated, `403` forbidden, `404` not found, `409` conflict, and so on; do not return `200` for every error. With Problem Details, define a stable error `type` under RFC 9457 (defaulting to `about:blank` if omitted). If `status` is provided, it must match the actual HTTP status. `title` should be a stable summary; add `detail`, `instance`, and safe, explicit `error_code` and `request_id` as needed. Clients rely on stable types/codes, not `detail` wording.
+- Do not put secrets, sensitive raw request content, exception stacks, or SQL in error extensions. For protected endpoints, define authorization under the project's authentication scheme, and document requests/responses, authentication, and major errors in OpenAPI.
 
-## 按需：应用层加密
+## As Needed: Application-Layer Encryption
 
-仅当用户要求或目标项目已有契约需要应用层加密时，先读 [加密选型与接口契约](references/application-encryption.md)。确定采用该方案后，读 [SM2+SM4 v1 实现契约](references/sm2-sm4.md) 中的共用线格式、无状态/有状态模式、部分加密的 multipart、公钥缓存与 `off/on/force` 级别；目前没有其他内置方案。此参考以已落地无状态线格式为基线并增补尚未落地的设计，和最初同为 `X-SM-V: 1` 的草案格式不互通；不要把它自动套到已有客户端、声称已通过安全/合规审查，或在未通知调用方的情况下修订线格式。
+Only when the user requests application-layer encryption or the target project's existing contract requires it, first read [Encryption Selection and API Contracts](references/application-encryption.md). Once that scheme is selected, read the shared wire format, stateless/stateful modes, partially encrypted multipart, public-key caching, and `off/on/force` levels in the [SM2+SM4 v1 Implementation Contract](references/sm2-sm4.md); there are currently no other built-in schemes. This reference uses the implemented stateless wire format as its baseline and adds designs not yet implemented. It is incompatible with the original draft format, which also used `X-SM-V: 1`; do not automatically apply it to existing clients, claim it has passed security/compliance review, or revise the wire format without notifying callers.
 
-## 旧接口冲突时的迁移与重构
+## Migration and Refactoring When Legacy Endpoints Conflict
 
-发现老接口与上述建议冲突时，不立即改写或删除；先识别冲突是现行项目规范、兼容负担还是已废弃实现。可按任务要求做兼容扩展；破坏性更名、截断、替换或移除旧契约需用户明确授权。若任务无法在旧契约下完成，先提出兼容方案与风险，请求决定，不以“任务必需”为由擅自破坏调用方。
+When a legacy endpoint conflicts with these recommendations, do not immediately rewrite or delete it. First determine whether the conflict reflects current project rules, a compatibility burden, or an obsolete implementation. Compatible extensions can be made as requested; breaking renames, truncation, replacement, or removal of old contracts require explicit user authorization. If the task cannot be completed under the old contract, first propose a compatible approach and its risks and request a decision; do not break callers without authorization by claiming it is "required for the task."
 
-1. **盘点与分级**：列出旧 `方法 + 路径`、参数位置/名称/默认值、分页语义、状态码/响应格式、OpenAPI、各客户端/SDK 与测试；用请求日志或调用方证据评估实际使用（不得记录敏感载荷）。区分仅由本组件使用的内部接口、有独立内部调用方的接口及已公开接口；原本返回全集的接口增加默认分页也可能截断旧调用方的读取。
-2. **确定目标契约**：给出旧→新映射（路径、参数、分页、响应、错误）和每项行为变化。判断是可兼容增强、需要并行新版本，还是必须协调的破坏性变更；公开契约的替换时机与兼容期限由项目负责人/用户决定，不凭 skill 擅自定截止日期。
-3. **先建兼容桥**：优先在边界层保留旧入口并映射到同一业务实现，新增版本/端点承载新契约；旧分页参数只在旧入口作为已文档化兼容行为，新入口只支持新参数。新旧写入口须保持相同授权和副作用语义；如支持幂等键，核对跨入口重试时的作用域，避免双写。不要将游标与页号视为可直接互换：先核对排序、并发一致性、总数可得性、权限与来源上限，不能保证语义时明示限制或保留旧方案。
-4. **分阶段迁移调用方**：按项目测试设施和改动风险补充旧/新响应和错误、空页、边界、排序及授权的契约测试；更新 OpenAPI、客户端/SDK 和示例。按项目已有机制发布弃用通知与观测，确认消费者已切换后再考虑移除；若无安全可行的并行方式，提出迁移计划并请求决定，不悄悄做破坏性替换。
-5. **收尾与验证**：按已批准期限移除兼容分支、别名及相关文档和测试，检查无残留依赖；按项目要求和风险运行适用的验证，记录未运行项。未授权移除或无法证明消费者完成迁移时保留旧接口并报告阻塞。
+1. **Inventory and classification**: list old `method + path`, parameter locations/names/defaults, pagination semantics, status codes/response formats, OpenAPI, all clients/SDKs, and tests. Assess actual usage through request logs or caller evidence (do not record sensitive payloads). Distinguish internal endpoints used only by this component, endpoints with independent internal callers, and public endpoints. Adding default pagination to an endpoint that returned the full dataset can also truncate old callers' reads.
+2. **Define the target contract**: provide old→new mappings (paths, parameters, pagination, responses, errors) and each behavioral change. Decide whether the change is a compatible enhancement, requires a parallel new version, or is a breaking change requiring coordination. The project owner/user decides replacement timing and compatibility periods for public contracts; do not set deadlines based solely on this skill.
+3. **Build a compatibility bridge first**: prefer retaining the old entry point in the boundary layer and mapping it to the same business implementation, with a new version/endpoint carrying the new contract. Old pagination parameters are documented compatibility behavior only at the old entry point; the new entry point supports only new parameters. Old and new write entry points must retain the same authorization and side-effect semantics. If idempotency keys are supported, check their scope for retries across entry points to avoid duplicate writes. Do not treat cursors and page numbers as directly interchangeable: first check sorting, concurrent consistency, total-count availability, permissions, and source limits. State limitations or retain the old scheme when semantics cannot be guaranteed.
+4. **Migrate callers in stages**: add contract tests for old/new responses and errors, empty pages, boundaries, sorting, and authorization according to project test facilities and change risk; update OpenAPI, clients/SDKs, and examples. Publish deprecation notices and monitoring through the project's existing mechanisms, and consider removal only after confirming consumers have switched. If no safe, feasible parallel approach exists, propose a migration plan and request a decision; do not silently make a breaking replacement.
+5. **Wrap up and verify**: remove compatibility branches, aliases, and related documentation/tests according to the approved schedule, and check for residual dependencies. Run applicable checks according to project requirements and risk, recording checks not run. Retain the old endpoint and report the blocker if removal is unauthorized or consumer migration cannot be demonstrated.
 
-## 工作流程与交付
+## Workflow and Deliverables
 
-1. 列出目标资源、调用者、操作（读/写/命令）、授权边界、输入媒体类型和是否已有兼容约束；查阅目标项目规范、路由/DTO/测试及相近端点，区分文档意图与实际保证。
-2. 给每个接口写一行契约：`方法 路径`、用途、路径/查询/头/体参数（类型、必填、默认、边界）、成功状态与响应、错误、分页和排序、批量操作的原子性/逐项结果（若适用）、异步完成与重试、幂等性。
-3. 针对适用的边界验证：无效页号/页大小、空页、过滤后总数（若提供）、并列排序、并发变化、越权资源、未知写入字段、重复提交；批量写入覆盖超限/重复项、逐项越权或冲突、回滚或部分成功；初始化与上传覆盖重传/重启、文件与元数据错配、大小限制；复杂检索覆盖组合条件、结果扩展和游标绑定。必要时更新 OpenAPI 和调用方。
-4. 若用户要求实现，在项目测试设施允许时补充或更新必要的契约/行为测试，再运行目标项目规定且与风险相称的验证；若只请求评审，不修改代码或契约；若只要设计文档，不启动服务或向接口写入。说明哪些是项目既有约束、哪些是新建议，以及未验证的部分。
+1. List target resources, callers, operations (read/write/command), authorization boundaries, input media types, and existing compatibility constraints. Consult target project rules, routes/DTOs/tests, and similar endpoints; distinguish documented intent from actual guarantees.
+2. Write a one-line contract for each endpoint: `method path`, purpose, path/query/header/body parameters (type, requiredness, defaults, bounds), success status and response, errors, pagination and sorting, batch atomicity/per-item results (if applicable), asynchronous completion and retries, and idempotency.
+3. Verify applicable boundaries: invalid page numbers/page sizes, empty pages, filtered totals (if provided), sorting ties, concurrent changes, unauthorized resources, unknown write fields, and duplicate submissions. Batch-write coverage includes exceeded limits/duplicate items, per-item authorization failures or conflicts, and rollback or partial success. Initialization and upload coverage includes retransmission/restarts, mismatched files and metadata, and size limits. Complex-search coverage includes combined conditions, result expansions, and cursor binding. Update OpenAPI and callers when necessary.
+4. If implementation is requested, add or update necessary contract/behavior tests where project test facilities allow, then run the target project's required, risk-proportionate checks. For review-only requests, do not modify code or contracts; for design-document-only requests, do not start services or write to endpoints. Identify existing project constraints, new recommendations, and unverified aspects.
 
-匹配任务：设计列表与复杂检索、首次初始化或长耗时任务、图片文件上传、批量创建/更新/删除端点，迁移旧版分页接口；明确要求应用层加密时评审方案与接口契约。非匹配任务：重命名内部 Python 函数、定义 SSE event payload、修改 LLM tool schema 而不涉及 HTTP（须另查所属契约）。
+Matching tasks: designing list and complex-search endpoints, first-time initialization or long-running tasks, image file uploads, batch create/update/delete endpoints, and migrating legacy pagination endpoints; reviewing schemes and API contracts when application-layer encryption is explicitly requested. Nonmatching tasks: renaming internal Python functions, defining SSE event payloads, or changing LLM tool schemas without involving HTTP (consult the respective contract instead).
