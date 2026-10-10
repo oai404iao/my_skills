@@ -7,7 +7,7 @@
 | Skill | 用途 |
 | --- | --- |
 | [api-design](api-design/SKILL.md) | HTTP API 命名、批量写入、初始化、检索、上传、分页及兼容迁移；按需读取 SM2+SM4 加密实现契约及风险 |
-| [agents-md](agents-md/SKILL.md) | 根据项目证据创建、更新或审查 Agent 仓库指令，避免传播未经确认的通用政策 |
+| [agents-md](agents-md/SKILL.md) | 按项目证据创建、更新、审查或重设计仓库指令；按需处理 Codex / Claude Code 兼容性、指令分层与行为复核 |
 | [frontend-design](frontend-design/SKILL.md) | 完整迁入 ikadesign3 的强制 design.md 流程：提取、创建、实现与审查 |
 | [development-workflow](development-workflow/SKILL.md) | 开发流程指南：Git 分支与提交、实施与自检、测试验证分级、版本与发布；worktree 仅按需隔离 |
 | [llm-prompt-design](llm-prompt-design/SKILL.md) | 按任务设计、比较与评估 LLM 提示词；区分生图/非生图，以及工具和结构化响应契约 |
@@ -45,7 +45,13 @@ my_skills/
 │       ├── application-encryption.md
 │       └── sm2-sm4.md
 ├── agents-md/
-│   └── SKILL.md
+│   ├── SKILL.md
+│   └── references/
+│       ├── host-compatibility.md
+│       ├── instruction-design.md
+│       ├── repository-patterns.md
+│       ├── review-scenarios.md
+│       └── sources.md
 ├── frontend-design/
 │   ├── SKILL.md
 │   └── references/
@@ -81,6 +87,8 @@ my_skills/
 新增 skill 使用根目录下的 `<skill-name>/SKILL.md`。只有确有需要时才添加 `references/`、`scripts/`、`assets/` 和测试；不为凑齐模板创建空目录。
 
 ## 纳入来源
+
+`agents-md` 依据 AGENTS.md 官方格式、OpenAI Codex / Anthropic Claude Code 文档、GPT-6 Astra / Claude Opus 5.5 提示指南及五个 GitHub 仓库快照独立重设计。入口保留必要流程，宿主差异、模型适配、组织样例与验收场景按需读取；不复制上游指令正文，也不把其他项目的政策强加给目标仓库。具体来源、固定提交与未实测边界见 [来源说明](agents-md/references/sources.md)。
 
 `frontend-design` 当前完整迁入 `Ikaleio/skills` 的 `ikadesign3`（固定提交 `5276d6e`），保留其强制 design.md 前置、测量记录、规则标签、实现绑定和单次复查流程；适配技能名称与来源引用，并按用户要求加入少用口径、脚注和底部说明的文案约束。上游检查规则的已知冲突原样保留并另行记录。此前 Anthropic 版本的来源也保留在 [来源说明](frontend-design/references/sources.md)；来源仅供追溯，不代表再分发许可、统一授权或上游背书。
 
