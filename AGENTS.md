@@ -8,6 +8,7 @@
 - `<skill-name>/SKILL.md`：技能入口、触发条件和必要流程。
 - `<skill-name>/references/`、`scripts/`、`assets/`：按需添加的技能专属材料。
 - `prompts/coding-principles.md`：可选公共编码原则，不会因安装 skills 或读取本文件而自动全局生效。
+- `prompts/pi-global-agents.md`：Pi 全局指令的维护来源；发布到 `main` 后，由 dotfiles 仓库的 chezmoi external 获取并部署，不参与技能安装。
 
 ## 按任务读取
 

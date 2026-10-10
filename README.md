@@ -38,7 +38,8 @@ my_skills/
 ├── README.md                  # 技能目录、安装和维护说明
 ├── AGENTS.md                  # 本仓库维护约定
 ├── prompts/
-│   └── coding-principles.md   # 可选公共指令，不是可安装的 skill
+│   ├── coding-principles.md   # 可选公共指令，不是可安装的 skill
+│   └── pi-global-agents.md    # Pi 全局指令，由 chezmoi 分发
 ├── api-design/
 │   ├── SKILL.md
 │   └── references/
@@ -129,3 +130,26 @@ git diff
 [coding-principles.md](prompts/coding-principles.md) 提炼了最小改动、合理自主性和适度验证等编码原则。
 
 它不是 skill，也不会因安装本仓库或读取本仓库的 `AGENTS.md` 自动全局生效。需要时，仅将其中的“指令正文”接入实际宿主的用户级指令；接入前检查已有规则是否重复。确认接入后，再考虑停用原 `karpathy-guidelines` skill。
+
+### Pi 全局指令
+
+[pi-global-agents.md](prompts/pi-global-agents.md) 是 Pi 全局指令的唯一维护来源，
+包含编码原则、agent 派工、工具偏好与临时目录约定。它不是通用 skill，
+派工规则依赖当前 Pi subagent 工具；不会因安装 skills 自动生效。
+
+在这里修改并发布到远程 `main` 后，dotfiles 仓库的 `.chezmoiexternal.toml`
+通过 HTTPS 获取该文件，部署为 `~/.config/pi/agent/AGENTS.md`（`0600`）。
+刷新周期为 24 小时，不是后台定时同步；本地未推送的修改不会被获取。
+跟随 `main` 意味着后续应用可能改变全局指令，应先审查差异。
+
+备份已有目标后，可在配置好 dotfiles 的机器上手动刷新、审查并应用：
+
+```sh
+chezmoi diff --refresh-externals=always --skip-secrets --exclude=scripts,encrypted \
+  ~/.config/pi/agent/AGENTS.md
+chezmoi apply --refresh-externals=never --exclude=scripts,encrypted \
+  ~/.config/pi/agent/AGENTS.md
+```
+
+第二条命令使用刚审查的缓存。首次获取需要网络；不要直接修改部署副本或在
+dotfiles 中另存一份正文。应用后用 Pi 的 `/reload` 或新会话加载。
