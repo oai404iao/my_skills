@@ -8,6 +8,7 @@
 | --- | --- |
 | [api-design](api-design/SKILL.md) | HTTP API 命名、批量写入、初始化、检索、上传、分页及兼容迁移；按需读取 SM2+SM4 加密实现契约及风险 |
 | [agents-md](agents-md/SKILL.md) | 按项目证据创建、更新、审查或重设计仓库指令；按需处理 Codex / Claude Code 兼容性、指令分层与行为复核 |
+| [bruno](bruno/SKILL.md) | GUI for humans, files for AI to edit, CLI for execution: Bruno request/environment/test formats, CLI usage, and official sources |
 | [frontend-design](frontend-design/SKILL.md) | 完整迁入 ikadesign3 的强制 design.md 流程：提取、创建、实现与审查 |
 | [development-workflow](development-workflow/SKILL.md) | 开发流程指南：Git 分支与提交、实施与自检、测试验证分级、版本与发布；worktree 仅按需隔离 |
 | [llm-prompt-design](llm-prompt-design/SKILL.md) | 按任务设计、比较与评估 LLM 提示词；区分生图/非生图，以及工具和结构化响应契约 |
@@ -20,6 +21,7 @@
 npx skills add oai404iao/my_skills --list
 npx skills add oai404iao/my_skills --skill api-design
 npx skills add oai404iao/my_skills --skill agents-md
+npx skills add oai404iao/my_skills --skill bruno
 npx skills add oai404iao/my_skills --skill frontend-design
 npx skills add oai404iao/my_skills --skill development-workflow
 npx skills add oai404iao/my_skills --skill llm-prompt-design
@@ -60,6 +62,12 @@ my_skills/
 │       ├── build-workflow.md
 │       ├── review-loop.md
 │       └── sources.md
+├── bruno/
+│   ├── SKILL.md
+│   └── references/
+│       ├── file-format.md
+│       ├── cli.md
+│       └── sources.md
 ├── development-workflow/        # 开发流程指南：git / 开发 / 测试 / 版本发布
 │   ├── SKILL.md
 │   └── references/
@@ -90,6 +98,8 @@ my_skills/
 ## 纳入来源
 
 `agents-md` 依据 AGENTS.md 官方格式、OpenAI Codex / Anthropic Claude Code 文档、GPT-6 Astra / Claude Opus 5.5 提示指南及五个 GitHub 仓库快照独立重设计。入口保留必要流程，宿主差异、模型适配、组织样例与验收场景按需读取；不复制上游指令正文，也不把其他项目的政策强加给目标仓库。具体来源、固定提交与未实测边界见 [来源说明](agents-md/references/sources.md)。
+
+`bruno` is independently authored from Bruno's official source code and documentation, following "GUI for humans, files for AI to edit, CLI for execution." The main skill defines task and authorization boundaries; references cover Bru / OpenCollection YAML formats, CLI commands, and project links on demand. See [Sources](bruno/references/sources.md) for pinned commits, documentation conflicts, and licensing boundaries.
 
 `frontend-design` 当前完整迁入 `Ikaleio/skills` 的 `ikadesign3`（固定提交 `5276d6e`），保留其强制 design.md 前置、测量记录、规则标签、实现绑定和单次复查流程；适配技能名称与来源引用，并按用户要求加入少用口径、脚注和底部说明的文案约束。上游检查规则的已知冲突原样保留并另行记录。此前 Anthropic 版本的来源也保留在 [来源说明](frontend-design/references/sources.md)；来源仅供追溯，不代表再分发许可、统一授权或上游背书。
 
