@@ -11,6 +11,7 @@
 | [bruno](bruno/SKILL.md) | GUI for humans, files for AI to edit, CLI for execution: Bruno request/environment/test formats, CLI usage, and official sources |
 | [frontend-design](frontend-design/SKILL.md) | 完整迁入 ikadesign3 的强制 design.md 流程：提取、创建、实现与审查 |
 | [development-workflow](development-workflow/SKILL.md) | 开发流程指南：Git 分支与提交、实施与自检、测试验证分级、版本与发布；worktree 仅按需隔离 |
+| [deployment-standards](deployment-standards/SKILL.md) | Production deployment standards for Linux/systemd/Compose: layout, identities, permissions, cutover, backup, recovery, and acceptance |
 | [llm-prompt-design](llm-prompt-design/SKILL.md) | 按任务设计、比较与评估 LLM 提示词；区分生图/非生图，以及工具和结构化响应契约 |
 
 ## 安装
@@ -24,6 +25,7 @@ npx skills add oai404iao/my_skills --skill agents-md
 npx skills add oai404iao/my_skills --skill bruno
 npx skills add oai404iao/my_skills --skill frontend-design
 npx skills add oai404iao/my_skills --skill development-workflow
+npx skills add oai404iao/my_skills --skill deployment-standards
 npx skills add oai404iao/my_skills --skill llm-prompt-design
 ```
 
@@ -76,6 +78,12 @@ my_skills/
 │       ├── testing.md
 │       ├── versioning.md
 │       └── worktrees.md
+├── deployment-standards/
+│   ├── SKILL.md
+│   └── references/
+│       ├── runtime-layout.md
+│       ├── release-and-recovery.md
+│       └── sources.md
 └── llm-prompt-design/
     ├── SKILL.md
     └── references/
@@ -104,6 +112,8 @@ my_skills/
 `frontend-design` 当前完整迁入 `Ikaleio/skills` 的 `ikadesign3`（固定提交 `5276d6e`），保留其强制 design.md 前置、测量记录、规则标签、实现绑定和单次复查流程；适配技能名称与来源引用，并按用户要求加入少用口径、脚注和底部说明的文案约束。上游检查规则的已知冲突原样保留并另行记录。此前 Anthropic 版本的来源也保留在 [来源说明](frontend-design/references/sources.md)；来源仅供追溯，不代表再分发许可、统一授权或上游背书。
 
 `development-workflow`（原 `git-branch-development-workflow`）由本机原有 skill 调整而来：默认改为分支开发而非 worktree、默认只推送集成分支、合并后同步清理本地与远端开发分支，并新增按社区实践（SemVer、Conventional Commits、Keep a Changelog、release-please/semantic-release/changesets）整理的版本发布指引。原有 worktree 参考文档保留为按需读取的隔离方案。本地来源未附带许可证声明。
+
+`deployment-standards` is independently written from the user-provided `ai_server_info` deployment archive. It separates reusable Linux/systemd/Compose deployment guidance from machine-specific migration decisions, rehearsal isolation, and historical status. References cover runtime layout and management, release/recovery, and [sources and scope](deployment-standards/references/sources.md). It does not bundle private configuration, business data, or operational scripts.
 
 `llm-prompt-design` 依据 OpenAI、Anthropic、Google 示例及 DAIR.AI 资料独立编写；采用主题、来源及许可说明见 [来源说明](llm-prompt-design/references/sources.md)。图像提示词七槽位公式来自本仓库维护任务，不作为第三方标准。
 
