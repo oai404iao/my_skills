@@ -82,6 +82,7 @@ my_skills/
 │   ├── SKILL.md
 │   └── references/
 │       ├── runtime-layout.md
+│       ├── backup-management.md
 │       ├── release-and-recovery.md
 │       └── sources.md
 └── llm-prompt-design/
@@ -113,7 +114,7 @@ my_skills/
 
 `development-workflow`（原 `git-branch-development-workflow`）由本机原有 skill 调整而来：默认改为分支开发而非 worktree、默认只推送集成分支、合并后同步清理本地与远端开发分支，并新增按社区实践（SemVer、Conventional Commits、Keep a Changelog、release-please/semantic-release/changesets）整理的版本发布指引。原有 worktree 参考文档保留为按需读取的隔离方案。本地来源未附带许可证声明。
 
-`deployment-standards` is independently written from the user-provided `ai_server_info` deployment archive. It separates reusable Linux/systemd/Compose deployment guidance from machine-specific migration decisions, rehearsal isolation, and historical status. References cover runtime layout and management, release/recovery, and [sources and scope](deployment-standards/references/sources.md). It does not bundle private configuration, business data, or operational scripts.
+`deployment-standards` is independently written from the user-provided `ai_server_info` deployment archive and primary backup references from FHS, Borg, restic, and CISA. It separates reusable Linux/systemd/Compose deployment guidance from machine-specific migration decisions, rehearsal isolation, and historical status. References cover runtime layout, [backup placement and management](deployment-standards/references/backup-management.md), release/recovery, and [sources and scope](deployment-standards/references/sources.md). It does not bundle private configuration, business data, or operational scripts.
 
 `llm-prompt-design` 依据 OpenAI、Anthropic、Google 示例及 DAIR.AI 资料独立编写；采用主题、来源及许可说明见 [来源说明](llm-prompt-design/references/sources.md)。图像提示词七槽位公式来自本仓库维护任务，不作为第三方标准。
 

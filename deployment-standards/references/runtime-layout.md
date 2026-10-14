@@ -13,7 +13,7 @@ Use this reference when designing or reviewing paths, identities, permissions, s
 | `/var/lib/<app>/` | Databases, uploads, task state, persistent outputs | Corresponding runtime identity |
 | `/var/cache/<app>/` | Verified rebuildable/downloadable cache | Corresponding runtime identity |
 | `/var/log/<app>/` | Required file logs | Corresponding runtime identity; rotate |
-| `/var/backups/<app>/` | Local backup staging | Backup administrator only; not the sole backup |
+| `/var/backups/<scope>/<environment>/` | Before-change backup sets and local export staging | Backup administrator only; not the sole disaster-recovery copy |
 | `/var/www/html/<site>/` | Static published artifacts | Administrator publishes; web worker reads |
 
 - Do not depend on personal HOME directories, shell profiles, login activation, or administrator-owned per-user tools.
@@ -24,6 +24,7 @@ Use this reference when designing or reviewing paths, identities, permissions, s
 - Record each volume's real name, owner, container target, backup procedure, and consumers. A Compose project rename must not silently select an empty volume.
 - If using separate data filesystems, account for Docker volumes as well as bind mounts. Mounting `/srv` alone does not move Docker-managed storage.
 - Declare required mount dependencies and fail when storage is unavailable rather than writing into an unmounted directory on the root filesystem.
+- Before creating backup copies, read [Backup management](backup-management.md) for type-specific paths, permissions, retention, and independent storage. `/var/backups` is this baseline's convention, not a universal FHS mandate.
 
 ## Identities and Permissions
 

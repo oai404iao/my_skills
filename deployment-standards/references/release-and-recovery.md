@@ -15,6 +15,8 @@ Do not combine an operating-system or directory migration with unapproved databa
 
 ## Backup Contract
 
+Before capturing or copying anything, read [Backup management](backup-management.md) and resolve its destination, protection, set identity, manifest, and retention owner. This applies to ad hoc pre-change configuration copies as well as full migrations; do not leave backup files beside active sources. The rules below define capture and recovery semantics rather than a second storage convention.
+
 Cover code and locks, effective configuration, necessary secrets, images/build inputs, database state, uploads, outputs, unique models, and required logs. Treat shared database instances by their verified contents and consumers, not guessed ownership from names.
 
 For each backup, record source, capture time, engine/tool version, size, checksum, write-quiescence status, protection/encryption method, restore procedure, and verification result. Keep credentials and business records out of public evidence.

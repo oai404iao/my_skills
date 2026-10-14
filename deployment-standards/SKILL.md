@@ -26,7 +26,8 @@ Reference paths are relative to this skill directory.
 | Task | Read |
 | --- | --- |
 | Directory layout, identities, permissions, units, mounts, networking, logs | [Runtime layout and management](references/runtime-layout.md) |
-| Publishing, cutover, database/file backup, recovery, rollback, acceptance | [Release and recovery](references/release-and-recovery.md) |
+| Backup destinations, before-edit copies, centralized repositories, protection, retention, cleanup | [Backup management](references/backup-management.md) |
+| Publishing, cutover, backup consistency/capture, recovery, rollback, acceptance | [Release and recovery](references/release-and-recovery.md) |
 | Maintaining this skill or tracing its origin and exclusions | [Sources and scope](references/sources.md) |
 
 Read only the relevant references. No access to the original source archive is required to use this skill.
@@ -55,7 +56,8 @@ Distinguish **confirmed policy**, **observed behavior**, **proposed target**, an
 4. **Readiness:** verify storage and dependencies before admitting writes. Ordering, `active`, and `running` are not readiness proofs.
 5. **Exposure:** prefer internal networks or loopback for same-host traffic after confirming consumers. Record and justify external listeners.
 6. **Cutover:** prevent duplicate writers, consumers, and schedulers; preserve persistent volumes and current data.
-7. **Recovery:** use engine-supported backups, recoverable artifacts, and actual restore checks appropriate to the change.
+7. **Backup placement:** before creating any backup, including a single before-edit copy, read the backup management reference and resolve an approved destination. Default local roots are `/var/backups/<scope>/<environment>/`; retained disaster-recovery copies belong on approved independent storage. Never scatter `.bak` files beside sources or use project, release, web, or temporary directories as backup storage. Missing access/storage is a blocker, not permission to improvise a fallback or delete older backups.
+8. **Recovery:** use engine-supported backups, recoverable artifacts, and actual restore checks appropriate to the change; record locations, retention, and any off-machine recovery gaps.
 
 Apply these rules locally. Do not rewrite unrelated services, normalize all permissions recursively, or introduce new infrastructure without authorization.
 
