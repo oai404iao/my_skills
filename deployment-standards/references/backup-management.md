@@ -11,13 +11,13 @@ These are this skill's baseline conventions, not a universal Linux standard or p
 3. Verify destination ownership/access, available capacity, and required storage mounts. If a dedicated filesystem or remote mount is required, verify its identity and fail closed when absent; do not fill the root filesystem underneath an unmounted directory.
 4. Create a new, restricted backup set, capture it with the appropriate method, and record verification and restore instructions before the dependent change proceeds.
 
-Do not use the current working directory, source-file siblings (`.bak`, `.old`, timestamp suffixes), Git/worktrees, release directories, web roots, configuration include directories, application data directories, personal HOME, `/tmp`, or `/var/tmp` as ad hoc deployment backup destinations. A Git commit is useful for tracked non-secret configuration, but does not replace backup of untracked state or secrets.
+Do not use the current working directory, source-file siblings (`.bak`, `.old`, timestamp suffixes), Git/worktrees, release directories, web roots, configuration include directories, application data directories, personal HOME, `/tmp`, or `/var/tmp` as ad hoc deployment backup destinations. The deliberately configured user-owned root below is a scoped exception to the HOME prohibition, not a general fallback. A Git commit is useful for tracked non-secret configuration, but does not replace backup of untracked state or secrets.
 
 If the destination is unavailable, permission is denied, or capacity is insufficient, report the blocker and request an approved destination/access change. Do not silently fall back to another location, escalate privileges, overwrite a previous backup, or delete older sets to make room. Continue work that does not depend on that backup. Preserve documented application/package-managed backup locations; this prohibition targets new agent-created copies, not permission to relocate existing files.
 
 ## Unified Storage Roles
 
-Use one configured local backup root per host, defaulting to `/var/backups`. Separate environments and scopes beneath it:
+For system-service backups, use one configured local backup root per host, defaulting to `/var/backups`. Separate environments and scopes beneath it:
 
 | Role / backup type | Default destination | Required distinction |
 | --- | --- | --- |
@@ -37,6 +37,14 @@ Use one configured local backup root per host, defaulting to `/var/backups`. Sep
 Choose one retained repository arrangement according to access boundaries. For Borg/restic or another managed format, use repository/snapshot IDs, labels, and manifests to express these identities; **do not impose this loose-file tree inside the tool's internal repository**. Isolate hosts, environments, and tenants by access control or separate repositories where required. Centralization is a naming and management contract, not authorization to provision a server, bucket, paid service, or transfer sensitive data.
 
 Avoid redundant full local copies when the approved workflow streams directly to a repository. Record the repository endpoint and snapshot ID instead of inventing a staging file. Use an existing local repository if contracted, but keep its role separate from export staging and do not count it as off-machine storage.
+
+### User-owned service mapping
+
+For an intentionally user-owned deployment, first read [User services and XDG](user-services-xdg.md). Prefer an existing approved repository/destination. When a local user-owned root is needed and authorized, propose `$XDG_STATE_HOME/deployment-backups/` (default `~/.local/state/deployment-backups/`) and resolve it to an absolute path for the owning account. This is this skill's convention, not an XDG-defined backup directory.
+
+Map the same `<scope>/<environment>/{pre-change,staging}/<backup-id>/` tree beneath that root. Reserve it for backups, outside the application's data/state/release/include trees; exclude it explicitly from broad HOME/XDG captures. Validate mounts, capacity, restrictive creation permissions, set identity, consistency, retention, and restore as for system backups. A missing `/var/backups` permission does not authorize choosing this profile or creating another fallback.
+
+Same-UID staging cannot satisfy the backup-administrator/runtime separation below: the application may modify or delete it even with `0700`/`0600`. Record this limitation and require approved independent retained copies with deletion protection appropriate to the recovery contract; do not claim local staging is protected disaster recovery. For central repositories/manifests, distinguish **source host and owning account** as well as environment/scope to avoid collisions between users. Preserve the application's actual XDG mapping and ownership metadata for restore; never restore runtime sockets or locks.
 
 ## Set Identity and Inventory
 

@@ -1,6 +1,6 @@
 # Sources and Scope
 
-This skill is independently written from a user-provided local deployment archive named `ai_server_info` and the public backup references below, not copied from a third-party deployment framework.
+This skill is independently written from a user-provided local deployment archive named `ai_server_info`, public backup references, and official XDG/systemd documentation below, not copied from a third-party deployment framework.
 
 ## Source Material
 
@@ -31,6 +31,24 @@ The backup-management addition independently synthesizes these primary sources. 
 Our exact `/var/backups/<scope>/<environment>/{pre-change,staging}/<backup-id>/` layout, backup-server `/srv/backups/...` example, set/manifest conventions, prohibition on scattered agent-created copies, and proposed pre-change retention floor are local baseline design choices. Existing protected project contracts take precedence; exceptions and recovery gaps must be explicit.
 
 No third-party documentation text or example scripts are bundled by this addition, and it does not extend a third party's license to the original private archive.
+
+## User Services and XDG Sources
+
+The user-service profile is an independent synthesis of the following primary documentation. The XDG source is specification 0.8. The systemd manual sources below are pinned to **v257** for reproducible semantics, not a required minimum or a claim that v257 is the latest release. Validate availability, distribution policy, and actual behavior against the target host's installed systemd, kernel, session setup, and applications. The official rendered manual site was unavailable during research; the links point to upstream's manual sources.
+
+| Source | Adopted principle and limits |
+| --- | --- |
+| [XDG Base Directory Specification 0.8](https://specifications.freedesktop.org/basedir/0.8/) | Config/data/state/cache roles, absolute roots and defaults, executable location, lookup precedence, and private ephemeral runtime storage; XDG does not standardize our release/backup tree or force applications to honor it |
+| [systemd.unit, v257](https://github.com/systemd/systemd/blob/v257/man/systemd.unit.xml) | User unit load paths, drop-ins, dependencies, and user-scope path specifiers; confirm effective roots rather than assuming shell exports affect manager lookup |
+| [systemd.exec, v257](https://github.com/systemd/systemd/blob/v257/man/systemd.exec.xml) | User identity limits, managed XDG directories, environment/credential handling, and sandbox restrictions; directory creation does not configure an application's storage |
+| [systemd.service, v257](https://github.com/systemd/systemd/blob/v257/man/systemd.service.xml) | Foreground supervision, exec versus readiness, restart/stop behavior, and non-shell command parsing; the new unit sketch is independently authored, not an upstream template |
+| [systemd.special, v257](https://github.com/systemd/systemd/blob/v257/man/systemd.special.xml) | User `default.target`, graphical-session targets, and limits of network ordering; system targets do not order a separate user manager |
+| [loginctl, v257](https://github.com/systemd/systemd/blob/v257/man/loginctl.xml) and [pam_systemd, v257](https://github.com/systemd/systemd/blob/v257/man/pam_systemd.xml) | Account-wide linger, per-user manager/runtime lifecycle, and login environment; linger does not unlock HOME, enable each service, or prove boot readiness |
+| [systemctl, v257](https://github.com/systemd/systemd/blob/v257/man/systemctl.xml) | User/system operation scope; reload, enable, start, disable, and stop are distinct operations, and alternate activation can remain |
+| [systemd manager D-Bus interface, v257](https://github.com/systemd/systemd/blob/v257/man/org.freedesktop.systemd1.xml) | The running manager's `UnitPath` property exposes its active unit search paths, distinct from a client process's environment |
+| [environment.d, v257](https://github.com/systemd/systemd/blob/v257/man/environment.d.xml) | Environment passed to user-manager children, not a universal mechanism to change the manager's own startup environment |
+
+Our ownership-profile selection, release subdirectories, user backup root, stricter failure on an unavailable runtime root, and acceptance checklist are recommended baseline choices, not requirements imposed by XDG or systemd. Same-UID file modes do not establish independent deployment or backup authority. No third-party manual text or scripts are copied; factual synthesis and the illustrative unit do not imply upstream endorsement or a license grant over unrelated source material.
 
 ## Deliberate Exclusions
 

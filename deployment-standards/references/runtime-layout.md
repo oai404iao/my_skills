@@ -2,6 +2,8 @@
 
 Use this reference when designing or reviewing paths, identities, permissions, startup, networking, and logs. The paths below are baseline examples: replace `<app>`, `<stack>`, `<version>`, and `<site>` with verified names. They are not existing resources or commands to execute.
 
+This directory/identity profile targets administrator-managed **system services**. For deliberately user-owned services, read [User services and XDG](user-services-xdg.md) instead of applying the HOME prohibition, dedicated system-account rules, or system-unit fields unchanged. Shared readiness, exposure, and recovery principles still apply.
+
 ## Directory Responsibilities
 
 | Path | Purpose | Write boundary |

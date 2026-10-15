@@ -2,6 +2,8 @@
 
 Read for publishing, production cutover, backup/restore, rollback, or deployment acceptance. These are procedures to adapt, not authorization to operate a host. Check exact commands against project wrappers, installed versions, working directories, and intended side effects before use.
 
+The administrator-controlled artifact and no-personal-HOME rules below describe the system-service profile. For explicitly user-owned deployments, apply [User services and XDG](user-services-xdg.md): use its account/path/activation contract, report same-UID isolation limits, and retain the same consistency, single-writer, and data-preserving recovery requirements.
+
 ## Prepare a Recoverable Release
 
 1. Record the source revision or release identifier, including relevant uncommitted changes when preserving an existing deployment.
@@ -74,7 +76,7 @@ Apply the checks relevant to the deployment change; a full migration needs broad
 
 | Area | Evidence |
 | --- | --- |
-| Runtime contract | Correct UID/GID, code/configuration non-writable, intended writable paths, no personal-HOME dependency |
+| Runtime contract | Correct manager and UID/GID, intended writable paths; system profile: code/configuration non-writable and no personal-HOME dependency; user profile: verified XDG roots and explicit same-UID limits |
 | Persistence | Correct original volumes/mounts, no accidental empty state, missing storage fails safely |
 | Dependencies | Actual consumers reach the intended database/role, Redis DB, storage, and upstream services |
 | Business behavior | Representative authorized operation and historical-data/file access; health/readiness alone are insufficient |
@@ -83,6 +85,6 @@ Apply the checks relevant to the deployment change; a full migration needs broad
 | GPU, if required | Device/framework visibility and real model inference on the intended device, not just a device listing |
 | Operations | Useful logs, retention, reconnect after dependency interruption, persistence after restart |
 | Recovery | Actual isolated restore and rollback evidence, including post-cutover data handling |
-| Unattended boot | Full-machine restart without login restores mounts, dependencies, and required services |
+| Lifecycle | For unattended services, full-machine restart without login restores mounts, dependencies, and required services (user profile includes activation/linger and boot-available HOME); explicitly session-bound services meet their documented session start/stop behavior |
 
 Report omitted checks and residual risks explicitly. A representative sample does not establish all formats, long-running load, or notification delivery. Do not call the deployment fully accepted when its required checks remain unverified.

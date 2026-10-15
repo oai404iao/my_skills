@@ -11,7 +11,7 @@
 | [bruno](bruno/SKILL.md) | GUI for humans, files for AI to edit, CLI for execution: Bruno request/environment/test formats, CLI usage, and official sources |
 | [frontend-design](frontend-design/SKILL.md) | 完整迁入 ikadesign3 的强制 design.md 流程：提取、创建、实现与审查 |
 | [development-workflow](development-workflow/SKILL.md) | 开发流程指南：Git 分支与提交、实施与自检、测试验证分级、版本与发布；worktree 仅按需隔离 |
-| [deployment-standards](deployment-standards/SKILL.md) | Production deployment standards for Linux/systemd/Compose: layout, identities, permissions, cutover, backup, recovery, and acceptance |
+| [deployment-standards](deployment-standards/SKILL.md) | Linux/systemd/Compose deployment standards: system and user/XDG layouts, identities, lifecycle/linger, backup, recovery, and acceptance |
 | [llm-prompt-design](llm-prompt-design/SKILL.md) | 按任务设计、比较与评估 LLM 提示词；区分生图/非生图，以及工具和结构化响应契约 |
 
 ## 安装
@@ -82,6 +82,7 @@ my_skills/
 │   ├── SKILL.md
 │   └── references/
 │       ├── runtime-layout.md
+│       ├── user-services-xdg.md
 │       ├── backup-management.md
 │       ├── release-and-recovery.md
 │       └── sources.md
@@ -114,7 +115,7 @@ my_skills/
 
 `development-workflow`（原 `git-branch-development-workflow`）由本机原有 skill 调整而来：默认改为分支开发而非 worktree、默认只推送集成分支、合并后同步清理本地与远端开发分支，并新增按社区实践（SemVer、Conventional Commits、Keep a Changelog、release-please/semantic-release/changesets）整理的版本发布指引。原有 worktree 参考文档保留为按需读取的隔离方案。本地来源未附带许可证声明。
 
-`deployment-standards` is independently written from the user-provided `ai_server_info` deployment archive and primary backup references from FHS, Borg, restic, and CISA. It separates reusable Linux/systemd/Compose deployment guidance from machine-specific migration decisions, rehearsal isolation, and historical status. References cover runtime layout, [backup placement and management](deployment-standards/references/backup-management.md), release/recovery, and [sources and scope](deployment-standards/references/sources.md). It does not bundle private configuration, business data, or operational scripts.
+`deployment-standards` is independently written from the user-provided `ai_server_info` deployment archive and primary references from FHS, Borg, restic, CISA, XDG, and systemd. It separates reusable Linux/systemd/Compose deployment guidance from machine-specific migration decisions, rehearsal isolation, and historical status. References cover system runtime layout, [user services and XDG](deployment-standards/references/user-services-xdg.md), [backup placement and management](deployment-standards/references/backup-management.md), release/recovery, and [sources and scope](deployment-standards/references/sources.md). It does not bundle private configuration, business data, or operational scripts.
 
 `llm-prompt-design` 依据 OpenAI、Anthropic、Google 示例及 DAIR.AI 资料独立编写；采用主题、来源及许可说明见 [来源说明](llm-prompt-design/references/sources.md)。图像提示词七槽位公式来自本仓库维护任务，不作为第三方标准。
 
