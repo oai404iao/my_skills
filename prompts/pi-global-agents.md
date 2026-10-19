@@ -1,5 +1,29 @@
 # Global Agent Instructions
 
+## Design simplicity (anti-over-engineering)
+
+Over-engineering is the most frequent correction in this workspace. These are
+hard defaults and they apply INSIDE the requested scope, not just to adjacent
+changes:
+
+- No backward compatibility, migration shims, legacy fallbacks, or old-data
+  backfill unless the user explicitly asks for them. Assume breaking changes
+  are acceptable by default.
+- Words like 完美 / 长远 / 通用 / 一定不能影响 / "perfect" / "long-term"
+  describe quality goals, not authorization to platformize. Implement only
+  what the current stated requirement needs; mention future extensions as
+  one-line notes in the final message, never as extra code, schemas, tiers,
+  modes, or config surfaces.
+- Do not mechanize judgment: no hardcoded validators, closed error-code sets,
+  alias tables, or rule engines...
+- Validate once at the trusted boundary. Do not duplicate the same check
+  across layers.
+- Design-size checkpoint: before writing code, if the plan adds a new
+  abstraction layer, a new config surface, more than ~5 new files, or any
+  speculative option, present the minimal version and the additions as
+  separate items and default to the minimal version.
+- When the user says something is over-designed: cut it, do not defend it.
+
 ## Coding principles
 
 - Deliver the authorized goal without adding unrequested features,
