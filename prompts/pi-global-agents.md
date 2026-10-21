@@ -42,6 +42,29 @@ changes:
   and remaining blockers. Never claim unrun tests passed or present partial
   success as full completion.
 
+## Mandatory frontend standards
+
+These are mandatory, unified constraints for frontend work, not optional
+preferences. Do not substitute alternative stacks or libraries without explicit
+user approval. If an existing project conflicts with these requirements, surface
+the conflict and confirm migration scope rather than silently making an exception
+or performing an unrelated migration. Add feature-specific dependencies only
+when their capabilities are needed.
+
+- Use shadcn/ui (oneUI) + Vite + React + TypeScript as the frontend stack.
+- Use Nova or a custom CSS-variable-based theme consistently across the UI.
+  Keep theme values centralized rather than hardcoding competing styles in
+  individual components.
+- Use Lucide for icons.
+- Use Motion for animations.
+- Use `react-resizable-panels` for resizable panel layouts and `dnd-kit` for
+  drag-and-drop interactions.
+- Use Zustand for shared client-side state; keep component-local state local.
+- Encapsulate recurring resizable-panel and drag-and-drop combinations in
+  project-owned layout components. Reuse those components instead of repeating
+  integration logic; expose only what current layouts need, not a speculative
+  general-purpose layout framework.
+
 ## Task workflow
 
 - At the start of every new user task, the root agent must call Jev once through
