@@ -13,6 +13,7 @@
 | [development-workflow](development-workflow/SKILL.md) | 开发流程指南：Git 分支与提交、实施与自检、测试验证分级、版本与发布；worktree 仅按需隔离 |
 | [deployment-standards](deployment-standards/SKILL.md) | Linux/systemd/Compose deployment standards: system and user/XDG layouts, identities, lifecycle/linger, backup, recovery, and acceptance |
 | [llm-prompt-design](llm-prompt-design/SKILL.md) | 按任务设计、比较与评估 LLM 提示词；区分生图/非生图，以及工具和结构化响应契约 |
+| [paseo-pi-team](paseo-pi-team/SKILL.md) | 仅显式调用的 Paseo + Pi 双层开发团队：独立监督、原生 worktree 隔离、持续集成、验证与授权回收 |
 
 ## 安装
 
@@ -27,6 +28,7 @@ npx skills add oai404iao/my_skills --skill frontend-design
 npx skills add oai404iao/my_skills --skill development-workflow
 npx skills add oai404iao/my_skills --skill deployment-standards
 npx skills add oai404iao/my_skills --skill llm-prompt-design
+npx skills add oai404iao/my_skills --skill paseo-pi-team
 ```
 
 交互式安装会选择目标 Agent 和安装范围。远程安装不包含本地尚未发布的修改。
@@ -34,6 +36,18 @@ npx skills add oai404iao/my_skills --skill llm-prompt-design
 当前工作树的 `frontend-design` 直接迁入了 Ikaleio 的原文，其适用的再分发许可尚未确认。发布或分发该版本前须明确授权；不要把安装命令或公开源码当成许可声明。详见 [来源说明](frontend-design/references/sources.md)。
 
 本地验证后，可以将对应 skill 目录同步到实际安装目录。同步前检查目标是否有本地修改；同步该 skill 的入口和必要引用文件，不复制整个仓库，也不覆盖其他 skills。
+
+### 仅显式调用：paseo-pi-team
+
+该 skill 声明 `disable-model-invocation: true`：Pi 可注册它，但不会将它加入模型的自动选择列表。安装后使用显式命令，不因任务较大就自动启动团队：
+
+```text
+/skill:paseo-pi-team 项目路径：{{路径}}；任务目标：{{目标}}；验收结果：{{结果}}；明确不做：{{排除项}}；其他约束：{{约束}}
+```
+
+`{{...}}` 替换为本次任务信息。在仓库根目录运行 `pi --skill ./paseo-pi-team`，可仅向该次 Pi 会话提供本地未发布版本，不修改全局配置；随后仍需显式调用。实际执行需当前会话可用的 Paseo 原生能力，普通独立 Pi 会话不一定具备。
+
+该字段的行为以 [Pi 官方 Skills 文档](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/skills.md) 为依据；不保证其他宿主支持同样的自动加载限制。详见 [来源与验证边界](paseo-pi-team/references/sources.md)。
 
 ## 仓库结构
 
@@ -86,20 +100,26 @@ my_skills/
 │       ├── backup-management.md
 │       ├── release-and-recovery.md
 │       └── sources.md
-└── llm-prompt-design/
-    ├── SKILL.md
+├── llm-prompt-design/
+│   ├── SKILL.md
+│   └── references/
+│       ├── foundations.md
+│       ├── strategy-selection.md
+│       ├── tasks/
+│       │   ├── non-gen-image.md
+│       │   └── gen-image.md
+│       ├── interfaces/
+│       │   ├── tool-schema.md
+│       │   └── structured-output.md
+│       ├── engineering/
+│       │   ├── evaluation.md
+│       │   └── provider-compatibility.md
+│       └── sources.md
+└── paseo-pi-team/
+    ├── SKILL.md                 # Pi 仅显式调用
     └── references/
-        ├── foundations.md
-        ├── strategy-selection.md
-        ├── tasks/
-        │   ├── non-gen-image.md
-        │   └── gen-image.md
-        ├── interfaces/
-        │   ├── tool-schema.md
-        │   └── structured-output.md
-        ├── engineering/
-        │   ├── evaluation.md
-        │   └── provider-compatibility.md
+        ├── supervision.md
+        ├── workspaces.md
         └── sources.md
 ```
 
@@ -118,6 +138,8 @@ my_skills/
 `deployment-standards` is independently written from the user-provided `ai_server_info` deployment archive and primary references from FHS, Borg, restic, CISA, XDG, and systemd. It separates reusable Linux/systemd/Compose deployment guidance from machine-specific migration decisions, rehearsal isolation, and historical status. References cover system runtime layout, [user services and XDG](deployment-standards/references/user-services-xdg.md), [backup placement and management](deployment-standards/references/backup-management.md), release/recovery, and [sources and scope](deployment-standards/references/sources.md). It does not bundle private configuration, business data, or operational scripts.
 
 `llm-prompt-design` 依据 OpenAI、Anthropic、Google 示例及 DAIR.AI 资料独立编写；采用主题、来源及许可说明见 [来源说明](llm-prompt-design/references/sources.md)。图像提示词七槽位公式来自本仓库维护任务，不作为第三方标准。
+
+`paseo-pi-team` 由用户提供的双层 Agent 团队 prompt 整理而来，参考 Agent Skills 官方规范、编写教程及 Pi 的显式调用机制；保留原生 workspace、监督 heartbeat、授权和交付边界。未附带自动化脚本，不会因安装而自动启动团队；来源和未实测范围见 [来源说明](paseo-pi-team/references/sources.md)。
 
 ## 维护规范
 
