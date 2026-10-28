@@ -21,6 +21,7 @@ The pinned repository has no license file. Its README says that some skills incl
 - Rename the frontmatter `name` and the Build workflow's skill reference from `ikadesign3` to `frontend-design`.
 - Add the import notice and this source reference.
 - Add the user's reader-facing copy constraint to the design.md contract, with Build and review references: use statistical-scope explanations, footnotes, and bottom-of-page explanations sparingly; remove redundant notes while retaining necessary context and required disclosures. This is a local addition, not an upstream rule.
+- Add local default stack and implementation guidance in the Build workflow (centralized CSS-variable themes instead of per-component hardcoded values, component-local vs. Zustand shared state, and wrapping recurring `react-resizable-panels` and `dnd-kit` combinations in minimal project-owned layout components). This is a local addition, not an upstream rule.
 - Preserve the upstream design.md prerequisite, required chapters, rule tags, measurement tables, implementation bindings, review record, mechanical checks, issue classes, and single-recheck stop rule.
 
 ### Known Upstream Rule Conflict

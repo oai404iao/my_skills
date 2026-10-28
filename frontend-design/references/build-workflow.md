@@ -84,6 +84,8 @@ Use the public primitives of `design.md`. A new layout can combine primitives. B
 
 If a layout method is missing, add minimal page layout styles in the extension namespace that `design.md` declares. If a reuse mechanism is missing, extend the component or style entry point that owns the rule. Do not create a parallel naming system.
 
+When the project uses or defaults to a React + TypeScript + shadcn/ui stack (unless project constraints specify otherwise): centralize theme values in CSS variables (such as Nova) rather than hardcoding them per component; use Lucide for icons, Motion for animations, `react-resizable-panels` for resizable layouts, `dnd-kit` for drag-and-drop, and Zustand for shared client state while keeping component-local state local. Wrap recurring panel and drag-and-drop combinations in project-owned layout components exposing only what current layouts need.
+
 If the task requires a backend or real data, connect the actual behavior. A visual example can use fixed sample data. In that case, state in the task scope that the data is sample data. Do not claim that inactive buttons, false success states, or static demos are complete features.
 
 Use native semantics, visible focus, accessible names, and sufficient contrast. Do not hide overflow to conceal layout errors.
