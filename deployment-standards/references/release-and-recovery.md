@@ -9,11 +9,31 @@ The administrator-controlled artifact and no-personal-HOME rules below describe 
 1. Record the source revision or release identifier, including relevant uncommitted changes when preserving an existing deployment.
 2. Publish into a new versioned release directory under administrator control. Keep runtime configuration and mutable state outside it.
 3. Rebuild language environments from compatible dependency locks on the target system. Do not assume a copied virtual environment is portable.
-4. Record immutable container image identity: image ID and available digest. Retain offline images or reproducible build inputs where registry recovery is uncertain.
+4. Give each container image a repository name and explicit version tag; use that reference for deployment and recovery as described below. Retain offline images or reproducible build inputs where registry recovery is uncertain.
 5. Verify configuration semantics, actual dependency addresses, container UID/GID, mounts, free space, and startup/stop behavior.
 6. Prepare the rollback route and acceptance criteria before changing the production entry point.
 
 Do not combine an operating-system or directory migration with unapproved database major-version upgrades, extension upgrades, driver replacement, or algorithm/configuration changes.
+
+### Named, Versioned Container Images
+
+- Build with an explicit name and version, for example `local/myapp:1.2.3`, so the deliverable has a recognizable repository and tag in `docker images`, not only an image ID or `<none>`. `local/` is a naming convention for local images, not a registry service.
+- Use the same named version tag in Compose `image:`, `docker run`, cutover records, and rollback instructions. Do not deploy by bare image ID or `name@sha256:...`. Image IDs/digests may be recorded for integrity checks, but do not replace the deployment reference.
+- Treat published version tags as fixed: changed content gets a new version tag. Do not use `latest`, an omitted tag, or another moving tag as the release/rollback identity. Retain the previous named version for rollback.
+- Export with `docker save` using the named version tag, not the image ID; import with `docker load` to retain it. Copy the saved archive unchanged between hosts. Do not substitute container filesystem export/import, which loses image metadata and tags.
+- For registry-to-registry image copy, use explicit named version tags on both source and destination; preserve the version and record any repository-name change. Before deployment after any import/copy, verify the expected repository/tag exists and matches the recorded artifact; stop on a missing tag or content conflict rather than deploying a hash or overwriting a published version.
+
+Illustrative commands, not an execution request: build from the application's verified build context containing its Dockerfile. For export, first read [Backup management](backup-management.md) and replace the archive placeholder with an absolute path in the approved staging destination. Run the load/inspection commands on the destination host after an authorized archive copy; use that host's archive path.
+
+```bash
+docker build -t local/myapp:1.2.3 .
+docker save -o <approved-archive-path>/myapp-1.2.3.tar local/myapp:1.2.3
+# Copy the archive to the destination host without changing its contents.
+docker load -i <approved-archive-path>/myapp-1.2.3.tar
+docker image inspect local/myapp:1.2.3
+```
+
+The corresponding Compose service selects `image: local/myapp:1.2.3`; a registry-backed deployment instead uses its confirmed registry/repository with the same explicit version. For offline/local images, configure the deployment to use the loaded image without a registry pull or an implicit rebuild.
 
 ## Backup Contract
 

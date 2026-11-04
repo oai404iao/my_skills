@@ -28,7 +28,7 @@ Reference paths are relative to this skill directory.
 | Directory layout, identities, permissions, units, mounts, networking, logs | [Runtime layout and management](references/runtime-layout.md) |
 | User-level services, XDG paths, user-manager environment, login/logout, linger, user-specific backup boundaries | [User services and XDG](references/user-services-xdg.md) |
 | Backup destinations, before-edit copies, centralized repositories, protection, retention, cleanup | [Backup management](references/backup-management.md) |
-| Publishing, cutover, backup consistency/capture, recovery, rollback, acceptance | [Release and recovery](references/release-and-recovery.md) |
+| Publishing, container image naming/build/transfer, cutover, backup consistency/capture, recovery, rollback, acceptance | [Release and recovery](references/release-and-recovery.md) |
 | Maintaining this skill or tracing its origin and exclusions | [Sources and scope](references/sources.md) |
 
 Read only the relevant references. No access to the original source archive is required to use this skill.
@@ -40,7 +40,7 @@ Inspect the affected project's deployment documentation, manifests, units, confi
 For each affected service, establish:
 
 - System-manager or user-manager ownership; for user services, the owning account, effective XDG roots, and session-bound versus unattended lifecycle.
-- Version or image identity, deployment entry point, and current versus intended state.
+- Version or named, version-tagged container image (for example, `local/myapp:1.2.3`), deployment entry point, and current versus intended state.
 - Runtime UID/GID, configuration readers, writable directories, mount targets, and volume names.
 - Database instance/database/role, Redis DB and data semantics, models, storage, and external API dependencies.
 - Listening addresses, ports, actual consumers, and proxy routes.
