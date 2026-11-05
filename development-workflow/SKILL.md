@@ -5,7 +5,7 @@ description: Git development workflow guidelines covering branches, commits, tes
 
 # Development Workflow Guide
 
-When making feature, fix, documentation, refactoring, test, or maintenance changes in a Git repository, organize the work using this guide: **develop on a branch → verify → Squash Merge back to the integration branch → clean up → release a version when needed**.
+When making feature, fix, documentation, refactoring, test, or maintenance changes in a Git repository, normally follow: **develop on a branch → verify → Squash Merge back to the integration branch → clean up → release a version when needed**. Simple, low-risk edits may instead use the direct-commit path below, without creating or merging a branch.
 
 This is the default workflow, not a rigid restriction that blocks development. The project's existing `AGENTS.md`, `CONTRIBUTING.md`, branch protection rules, and team conventions take precedence. If the user explicitly asks to work on the current branch, the project is unsuitable for branching, or the environment is restricted, continue completing the request, but explain any deviations.
 
@@ -13,7 +13,7 @@ This is the default workflow, not a rigid restriction that blocks development. T
 
 These four points are where this guide is most likely to differ from common practice, so establish the defaults first:
 
-1. **Branches, not worktrees**: By default, create a development branch in the current working tree with `git switch -c`. Use a linked worktree only when the user requests isolation, multiple tasks need to run in parallel, or unrelated changes in the current workspace must not be disturbed (see [Isolated Development with Worktrees](references/worktrees.md)).
+1. **Branches, not worktrees**: Except for eligible direct commits below, create a development branch in the current working tree with `git switch -c`. Use a linked worktree only when the user requests isolation, multiple tasks need to run in parallel, or unrelated changes in the current workspace must not be disturbed (see [Isolated Development with Worktrees](references/worktrees.md)).
 2. **Push only the integration branch**: By default, do not push development branches to the remote. Merge them directly after finishing locally, avoiding an extra push and remote cleanup.
 3. **Clean up immediately after merging**: Delete the development branch as soon as the Squash Merge succeeds; if a worktree was used, remove it too; if the development branch was actually pushed, also delete the remote branch.
 4. **Squash Merge by default**: Each integration adds just one commit representing the changes to the integration branch, keeping the mainline history readable.
@@ -34,9 +34,15 @@ git remote -v
 
 Confirm that the current directory is a Git repository, whether the current branch is the integration branch or another task's development branch, whether the workspace has uncommitted changes, and whether the integration branch is called `main`, `master`, `develop`, or something else. Determine the integration branch from project documentation, the user's instructions, and the remote default branch.
 
-### 2. Create a Development Branch
+### 2. Choose Direct Commit or Development Branch
 
-One logical topic per branch.
+**Direct commit for simple, low-risk edits:** A small, single-topic change with clear intent, an easily reviewed diff, and straightforward verification may be committed directly to `main` (or the project's integration branch). Examples include recording already-agreed preferences in a memory document, correcting a typo, or clarifying a few documentation lines. Judge consequences, not just line count: changes to runtime behavior, permissions, dependencies, CI, deployment, or public contracts should use a development branch, as should broader or uncertain changes.
+
+Use this path only when project rules and branch protection permit direct commits and no PR/MR review is required. Existing authorization boundaries still apply: permission to edit alone does not authorize committing or pushing.
+
+Start on the confirmed integration branch, update it with `git pull --ff-only <remote> <integration-branch>` when a remote exists, and preserve unrelated workspace changes. If switching or updating would disturb existing work, do not force it; use the branch/isolation path instead. Perform step 3's scoped checks and Conventional Commit, then push normally when authorized. Steps 4–6 (development-branch sync, merge, and cleanup) do not apply. If the remote advances before pushing, do not force-push or rebase the integration branch; reconcile on a development branch and rerun affected checks.
+
+**Development branch for other changes:** One logical topic per branch.
 
 ```bash
 git fetch <remote> --prune
@@ -113,18 +119,18 @@ When the task requires external delivery, a release tag on the integration branc
 
 ## Exceptional Cases
 
-- **Committed on the integration branch but not yet pushed**: Create a development branch from the current commit and continue. Before rewriting integration branch history, confirm the range of commits and the user's intent; do not blindly `reset`.
+- **Committed on the integration branch but not yet pushed**: If the change qualifies for the direct-commit path, keep it there and complete verification before any authorized push. Otherwise, create a development branch from the current commit and continue. Before rewriting integration branch history, confirm the range of commits and the user's intent; do not blindly `reset`.
 - **The development branch has already been pushed**: Delete it both locally and remotely after merging. Explain why if it truly needs to be retained, and do not leave unintended orphaned branches.
 - **Unable to create a branch or worktree**: Explain the reason and risks, then continue completing the request; do not stop just because the workflow cannot be followed.
 - **The project requires a different merge strategy**: Project rules take precedence; explicitly state that the default Squash Merge was not used. The strategy affects where release tags land, so also review [Versioning and Releases](references/versioning.md) when changing strategies.
 
 ## Completion Criteria
 
-- Changes are on a separate branch matching the task, with only one logical topic.
+- Changes cover one logical topic, using either an eligible direct commit on the integration branch or a separate branch matching the task.
 - Commit messages follow Conventional Commits, with no unrelated changes included.
 - Formatting, checks, tests, or builds that were run have been reported honestly; checks not run have not been described as passing.
-- Integration is complete through a PR/MR or local Squash Merge, adding just one commit representing these changes to the integration branch.
-- The development branch has been deleted, any worktree used has been removed, and any pushed development branch has been deleted remotely.
+- Integration is complete through an eligible direct commit, PR/MR, or local Squash Merge, adding just one commit representing these changes to the integration branch.
+- If a development branch or worktree was created, it has been cleaned up after integration, including any pushed development branch.
 - When a release is needed, the version number, annotated tag, and CHANGELOG agree and match the actual changes on the integration branch.
 
 ## References

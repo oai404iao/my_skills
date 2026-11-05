@@ -4,7 +4,7 @@ Scope control, pre-commit checks, and reporting completion. See the [Development
 
 ## Scope Control
 
-Each branch covers only one logical topic. In practice:
+Each task covers only one logical topic, whether using a development branch or an eligible direct commit under the [main guide](../SKILL.md#2-choose-direct-commit-or-development-branch). In practice:
 
 - Change only files relevant to the current task. Fix unrelated issues on a separate branch, or explicitly raise them and obtain consent.
 - Do not commit other people's changes. If the workspace contains changes outside this task, determine their source first; do not include them in `git add`.
@@ -71,7 +71,7 @@ The user cannot see your terminal, so the report should stand in for running the
 
 - Explain what was actually done, not what you intend to do.
 - List the commands actually run and their results; do not describe unrun verification as passing.
-- State which files changed and whether there were deviations from the default workflow (such as not creating a branch or using another merge strategy).
+- State which files changed and which workflow was used (eligible direct commit or branch and merge); explain any deviations from the applicable path.
 - When blocked, explain the blocker and what you tried; do not describe partial completion as full completion.
 - Explicitly mark anything that could not be verified as "not verified," explaining why and the remaining risks.
 

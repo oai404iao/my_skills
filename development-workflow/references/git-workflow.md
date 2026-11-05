@@ -26,6 +26,8 @@ git symbolic-ref --quiet --short refs/remotes/<remote>/HEAD
 
 ## Create and Switch Branches
 
+For simple, low-risk changes, first check the [main guide's direct-commit criteria](../SKILL.md#2-choose-direct-commit-or-development-branch). Eligible direct commits need no development branch, merge, or branch cleanup; the branch-based commands below apply to other changes.
+
 When the workspace is clean and you need to start from the latest integration branch:
 
 ```bash
