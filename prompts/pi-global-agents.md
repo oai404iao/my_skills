@@ -14,7 +14,7 @@
 - **Bounded subtasks:** Define goal, context, owned non-overlapping files, excluded scope, and verification (`fork_turns: "none"` with explicit inputs for self-contained recon/review). Reuse agents via `followup_task`; coordinate shared edits, preserve others' changes, and verify child deliverables before claiming completion. One reviewer suffices unless concrete residual risk or the user requires a second.
 - **Optional triage (Jev):** Root-only, and only when codemode `models` is available with credentials; otherwise proceed directly. Children are isolated only by host config (`models: false`), not a `spawn_agent` parameter or this text. Never route around an unavailable model via child agents, other tools, or other providers. Call at most once with a short sanitized summary (no secrets, raw files, or transcript) only when genuinely unsure about delegation or review:
   ```js
-  const res = await models.classify({ provider: "typesafe", id: "jev-latest" }, {
+  const res = await models.classify({ provider: "typesafe", id: "typesafe/jev" }, {
     state: { task: "…", scope: "…", risk: "…" },
     questions: {
       workflow: { type: "choice", instructions: "Proportionate workflow?", criteria: { direct: "Simple/known-path", delegate: "Independent work or unknown recon" } },
