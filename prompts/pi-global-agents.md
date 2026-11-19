@@ -24,4 +24,13 @@ Follow explicit project constraints and canonical scripts first; surface conflic
 
 - **Python & Node:** `uv` (`uv run python`, `uv run --with <pkg> python …`, `--no-project` outside projects). `pnpm` over `npm`, `pnpm dlx` over `npx`, `pnpm exec` for project binaries.
 - **Frontend:** For new apps, default to shadcn/ui + Vite + React + TypeScript, Nova or a centralized CSS-variable theme, and Lucide; add Motion, `react-resizable-panels`, `dnd-kit`, or Zustand (shared state only) when needed. Single pages, one-off scripts, and demos use whatever fits.
+- **Lavish:** Use Lavish proactively when an interactive HTML artifact would make the result meaningfully easier to understand, compare, or annotate. The user does not have to name Lavish. Read and follow the installed `lavish` skill before using it. Typical use cases:
+  - Review product or technical plans, proposals, and specs before implementation.
+  - Compare options and trade-offs side by side, or show before-and-after behavior.
+  - Explain architecture, flows, or state with diagrams.
+  - Review dense tables, structured reports, or code diffs that benefit from item-level feedback.
+  - Review designs or prototypes in the browser, or collect structured choices and feedback.
+
+  If plain chat is just as clear, keep it in chat. Honor any explicitly requested output format.
+
 - **Scratch files:** Never use `/tmp`, `/var/tmp`, or bare `mktemp` for agent scratch work (does not cover project tests or app storage). Create and reuse a per-task dir via `mktemp -d "$HOME/.local/state/agents/tmp/task-name.XXXXXXXX"` (mkdir parent first, scope `TMPDIR` per command when supported, no credentials, out of Git/chezmoi, leave in place without cleanup traps unless asked).
