@@ -13,6 +13,7 @@
 | [frontend-design](frontend-design/SKILL.md) | 完整迁入 ikadesign3 的强制 design.md 流程：提取、创建、实现与审查 |
 | [development-workflow](development-workflow/SKILL.md) | 开发流程指南：Git 分支与提交、实施与自检、测试验证分级、版本与发布；worktree 仅按需隔离 |
 | [deployment-standards](deployment-standards/SKILL.md) | Linux/systemd/Compose deployment standards: system and user/XDG layouts, identities, lifecycle/linger, backup, recovery, and acceptance |
+| [global-memory](global-memory/SKILL.md) | 检索跨工具共享全局长期记忆（`~/.agents/memory/`）：通用环境坑、工具/集合约定与非公司公共事实，对 Worker 默认只读 |
 | [llm-prompt-design](llm-prompt-design/SKILL.md) | 按任务设计、比较与评估 LLM 提示词；区分生图/非生图，以及工具和结构化响应契约 |
 | [paseo-pi-team](paseo-pi-team/SKILL.md) | 仅显式调用的 Paseo + Pi 双层开发团队：独立监督、原生 worktree 隔离、持续集成、验证与授权回收 |
 
@@ -29,6 +30,7 @@ npx skills add oai404iao/my_skills --skill clean-defensive-wording
 npx skills add oai404iao/my_skills --skill frontend-design
 npx skills add oai404iao/my_skills --skill development-workflow
 npx skills add oai404iao/my_skills --skill deployment-standards
+npx skills add oai404iao/my_skills --skill global-memory
 npx skills add oai404iao/my_skills --skill llm-prompt-design
 npx skills add oai404iao/my_skills --skill paseo-pi-team
 ```
@@ -59,7 +61,7 @@ my_skills/
 ├── AGENTS.md                  # 本仓库维护约定
 ├── prompts/
 │   ├── coding-principles.md   # 可选公共指令，不是可安装的 skill
-│   └── pi-global-agents.md    # Pi 全局指令，由 chezmoi 分发
+│   └── pi-global-agents.md    # pi 与 agy 共用全局指令维护源
 ├── api-design/
 │   ├── SKILL.md
 │   └── references/
@@ -104,6 +106,12 @@ my_skills/
 │       ├── backup-management.md
 │       ├── release-and-recovery.md
 │       └── sources.md
+├── global-memory/
+│   ├── SKILL.md
+│   ├── scripts/
+│   │   └── search.sh
+│   └── references/
+│       └── memory-layout.md
 ├── llm-prompt-design/
 │   ├── SKILL.md
 │   └── references/
@@ -143,6 +151,8 @@ my_skills/
 
 `deployment-standards` is independently written from the user-provided `ai_server_info` deployment archive and primary references from FHS, Borg, restic, CISA, XDG, and systemd. It separates reusable Linux/systemd/Compose deployment guidance from machine-specific migration decisions, rehearsal isolation, and historical status. References cover system runtime layout, [user services and XDG](deployment-standards/references/user-services-xdg.md), [backup placement and management](deployment-standards/references/backup-management.md), release/recovery, and [sources and scope](deployment-standards/references/sources.md). It does not bundle private configuration, business data, or operational scripts.
 
+`global-memory` 参考 `hc-bot` 的 `router-memory` 检索模式独立编写，提供跨工具共享记忆目录 `~/.agents/memory/` 的检索脚本与结构说明（见 [memory-layout.md](global-memory/references/memory-layout.md)），不包含本机私有记忆条目。
+
 `llm-prompt-design` 依据 OpenAI、Anthropic、Google 示例及 DAIR.AI 资料独立编写；采用主题、来源及许可说明见 [来源说明](llm-prompt-design/references/sources.md)。图像提示词七槽位公式来自本仓库维护任务，不作为第三方标准。
 
 `paseo-pi-team` 由用户提供的双层 Agent 团队 prompt 整理而来，参考 Agent Skills 官方规范、编写教程及 Pi 的显式调用机制；保留原生 workspace、监督 heartbeat、授权和交付边界。未附带自动化脚本，不会因安装而自动启动团队；来源和未实测范围见 [来源说明](paseo-pi-team/references/sources.md)。
@@ -181,11 +191,11 @@ git diff
 
 它不是 skill，也不会因安装本仓库或读取本仓库的 `AGENTS.md` 自动全局生效。需要时，仅将其中的“指令正文”接入实际宿主的用户级指令；接入前检查已有规则是否重复。确认接入后，再考虑停用原 `karpathy-guidelines` skill。
 
-### Pi 全局指令
+### 跨工具全局指令（pi 与 agy 共用）
 
-[pi-global-agents.md](prompts/pi-global-agents.md) 是 Pi 全局指令的唯一维护来源，
-包含编码原则、agent 派工、工具偏好与临时目录约定。它不是通用 skill，
-派工规则依赖当前 Pi subagent 工具；不会因安装 skills 自动生效。
+[pi-global-agents.md](prompts/pi-global-agents.md) 是 `pi` 与 `agy` 共用全局指令的唯一维护来源（保持文件名以兼容现有同步脚本），
+包含执行规范、工具链默认偏好、测试/文档纪律、去防御性约束与临时目录约定。
+同步部署目标为本机 `~/.config/pi/agent/AGENTS.md`（`pi`）与 `~/.gemini/GEMINI.md`（`agy`）。
 
 在这里修改并发布到远程 `main` 后，dotfiles 仓库的 `.chezmoiexternal.toml`
 通过 HTTPS 获取该文件，部署为 `~/.config/pi/agent/AGENTS.md`（`0600`）。
