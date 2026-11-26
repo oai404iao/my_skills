@@ -9,7 +9,7 @@
 | [api-design](api-design/SKILL.md) | HTTP API 命名、批量写入、初始化、检索、上传、分页及兼容迁移；按需读取 SM2+SM4 加密实现契约及风险 |
 | [agents-md](agents-md/SKILL.md) | 按项目证据创建、更新、审查或重设计仓库指令；按需处理 Codex / Claude Code 兼容性、指令分层与行为复核 |
 | [bruno](bruno/SKILL.md) | GUI for humans, files for AI to edit, CLI for execution: Bruno request/environment/test formats, CLI usage, and official sources |
-| [clean-defensive-wording](clean-defensive-wording/SKILL.md) | 清理技术文档、项目说明、记忆文件与交付报告中的防御性描述、免责套话与模糊对冲词，保留真实技术约束与具体验收边界 |
+| [clean-defensive-wording](clean-defensive-wording/SKILL.md) | 清理技术文档、代码与测试中的防御性冗余、过度设计与虚假安全感，保留真实技术约束、信任边界与明确验收范围 |
 | [frontend-design](frontend-design/SKILL.md) | 完整迁入 ikadesign3 的强制 design.md 流程：提取、创建、实现与审查 |
 | [development-workflow](development-workflow/SKILL.md) | 开发流程指南：Git 分支与提交、实施与自检、测试验证分级、版本与发布；worktree 仅按需隔离 |
 | [deployment-standards](deployment-standards/SKILL.md) | Linux/systemd/Compose deployment standards: system and user/XDG layouts, identities, lifecycle/linger, backup, recovery, and acceptance |
@@ -144,7 +144,7 @@ my_skills/
 
 `bruno` is independently authored from Bruno's official source code and documentation, following "GUI for humans, files for AI to edit, CLI for execution." The main skill defines task and authorization boundaries; references cover Bru / OpenCollection YAML formats, CLI commands, and project links on demand. See [Sources](bruno/references/sources.md) for pinned commits, documentation conflicts, and licensing boundaries.
 
-`clean-defensive-wording` 收录自本机 `~/.agents/skills/clean-defensive-wording/SKILL.md`，保留核心原则、中英文扫描模式与改写对照。本地来源未附带许可证声明。
+`clean-defensive-wording` 收录自本机 `~/.agents/skills/clean-defensive-wording/SKILL.md`，涵盖文档、生产代码（防御性逻辑与过度设计）与测试代码三类场景的核心原则、扫描模式及改写对照。本地来源未附带许可证声明。
 
 `frontend-design` 当前完整迁入 `Ikaleio/skills` 的 `ikadesign3`（固定提交 `5276d6e`），保留其强制 design.md 前置、测量记录、规则标签、实现绑定和单次复查流程；适配技能名称与来源引用，并按用户要求加入少用口径、脚注和底部说明的文案约束。上游检查规则的已知冲突原样保留并另行记录。此前 Anthropic 版本的来源也保留在 [来源说明](frontend-design/references/sources.md)；来源仅用于追溯，不含再分发许可或统一授权。
 
