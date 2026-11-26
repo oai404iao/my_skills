@@ -7,7 +7,7 @@ description: Design, implement, or review Linux deployment standards for systemd
 
 Separate deployment authority from runtime authority where the identity model permits, immutable code from mutable state, and process startup from business readiness. For unattended services, produce a deployment that can be operated and recovered without an administrator's login session; explicitly session-bound user services have a different lifecycle contract.
 
-This skill provides a recommended baseline, not evidence of an existing project's policy or current server state. Follow applicable instructions and confirmed project contracts. Preserve intentional exceptions; explain conflicts rather than silently changing production behavior.
+This skill provides a baseline. Follow applicable instructions and confirmed project contracts. Preserve intentional exceptions; explain conflicts rather than silently changing production behavior.
 
 ## Scope and Authorization
 
@@ -75,4 +75,4 @@ Choose checks for the authorized change and its risk:
 
 Do not execute business submissions, real notifications, queue consumption, or production restarts merely to finish a review. Use safe representative checks or report the unverified capability. Stop when required checks pass and no unresolved issue remains; do not expand into unrelated builds or benchmarks.
 
-Report changed files/resources, checks actually run, results, remaining blockers, and whether production was changed. A healthy process or successful HTTP response is not full deployment acceptance; static review is not a host-loading or model-behavior test.
+Report changed files/resources, checks actually run, results, remaining blockers, and whether production was changed. A healthy process or successful HTTP response does not establish full deployment acceptance.

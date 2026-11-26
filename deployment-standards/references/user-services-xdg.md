@@ -7,7 +7,7 @@ Read for Linux `systemd --user` services and their paths, environment, lifecycle
 | Profile | Use when | Contract |
 | --- | --- | --- |
 | System service running unprivileged | Shared infrastructure, privileged integration, or administrator-enforced separation of deployment and runtime | Administrator-managed system unit and artifacts; dedicated runtime identity; system paths from [Runtime layout](runtime-layout.md) |
-| Session-bound user service | A personal tool or desktop/session component belongs to one account | Owning user's manager; define the required session target and stop behavior; no promise of unattended boot |
+| Session-bound user service | A personal tool or desktop/session component belongs to one account | Owning user's manager; define the required session target and stop behavior; does not survive logout or reboot |
 | Unattended user service | A service deliberately belongs to one account and must run without login | Owning user's manager, enabled activation, approved linger, boot-available HOME/storage, and logout/reboot acceptance |
 
 - A non-root `User=` in a system unit does **not** make it a user service. Record manager scope and account alongside the unit name; identical names in the two managers are independent instances.
@@ -62,7 +62,7 @@ Where supported, use these unit directives with relative, application-specific n
 
 These manage directories, not application configuration. An application must consume these variables or receive explicit paths. There is no corresponding `DataDirectory=` directive; provision authoritative data explicitly. Do not move a contracted database into `StateDirectory=` merely because the directive is convenient.
 
-Use restrictive `*DirectoryMode=` values for private content; configuration may be provisioned separately rather than auto-created. State/cache/log directories persist on ordinary stop; this does not make cache a backup or guarantee journal persistence. Check custom roots against the target manager and application; service-local overrides must not send writes to a second, unnoticed tree.
+Use restrictive `*DirectoryMode=` values for private content; configuration may be provisioned separately rather than auto-created. State/cache/log directories persist on ordinary stop; this does not make cache a backup or ensure journal persistence. Check custom roots against the target manager and application; service-local overrides must not send writes to a second, unnoticed tree.
 
 ## Unit Baseline
 
@@ -115,7 +115,7 @@ journalctl --user -u example-app.service -n 100 --no-pager
 loginctl show-user example-owner -p Linger -p State -p RuntimePath
 ```
 
-Treat logs and configuration output as potentially secret-bearing; redact evidence. Nonzero `is-enabled` can describe a disabled unit rather than a broken connection; inspect the reported state, since even a zero exit status need not mean explicit enablement (for example, `static`). Journal availability/retention depends on host policy; do not promise persistent per-user journals or change host-wide journald settings without authorization.
+Treat logs and configuration output as potentially secret-bearing; redact evidence. Nonzero `is-enabled` can describe a disabled unit rather than a broken connection; inspect the reported state, since even a zero exit status need not mean explicit enablement (for example, `static`). Journal availability and retention depend on host policy; do not assume persistent per-user journals or change host-wide journald settings without authorization.
 
 For an authorized installation/change, validate the actual unit with `systemd-analyze --user verify <absolute-unit-path>` on the target version. Then apply only the necessary operations:
 
@@ -129,7 +129,7 @@ For an authorized installation/change, validate the actual unit with `systemd-an
 
 Do not combine `enable --now` as an incidental documentation-validation step. Before using linger for unattended service, confirm the owner, intended account-wide effects, boot-available HOME/config/secrets, and mount/dependency behavior. Login-unlocked encrypted HOME or interactive secret prompts can make unattended boot impossible despite linger. Do not change global logind settings as a shortcut.
 
-Linger does not enable the application or guarantee readiness; enabled units without a boot-started manager do not satisfy unattended boot either. Disabling linger or terminating/restarting the entire user manager affects unrelated units and sessions, so it is not a single-service rollback step.
+Linger does not enable the application or establish readiness; enabled units without a boot-started manager do not satisfy unattended boot either. Disabling linger or terminating/restarting the entire user manager affects unrelated units and sessions, so it is not a single-service rollback step.
 
 For cutover, stop all relevant activation sources (timers, sockets, path/D-Bus activation, old units/managers, container restart policies) as necessary under authorization. Check both system and user instances for duplicate listeners/writers. Do not infer quiescence from `disabled` alone. Apply the data-preserving cutover/rollback rules in [Release and recovery](release-and-recovery.md).
 

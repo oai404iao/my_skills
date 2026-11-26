@@ -1,6 +1,6 @@
 # Instruction Design
 
-Use this reference for creation, full redesign, or diagnosis of conflicting or over-constraining instructions. The writing rules below are local synthesis; provider-specific observations are attributed separately. They are hypotheses to verify on the target workload, not measured improvements.
+Use this reference for creation, full redesign, or diagnosis of conflicting or over-constraining instructions. The writing rules below are local synthesis; provider-specific observations are attributed separately and must be verified on the target workload.
 
 ## Keep Three Questions Separate
 

@@ -10,7 +10,7 @@ Deliver prompts or interface contracts that can be used, checked, and iterated o
 ## Define the task and success criteria first
 
 1. Determine whether the goal is creation, optimization, or review; identify inputs, audience, outputs, immutable constraints, model/API, and whether real data or failure samples are available. State assumptions for low-risk gaps; ask first when uncertainty about model capabilities, write permissions, or a production contract that must be matched affects the result.
-2. Determine whether the task is **image generation** or non-`gen_image`: visual question answering, OCR, and image classification are non-generation understanding/extraction tasks; modifying existing images is `gen_image` editing. Tool calling and structured responses are **interface tasks** that may overlap with either category; do not treat them as one kind of prompt.
+2. Determine whether the task is **image generation** or non-`gen_image`: visual question answering, OCR, and image classification are non-generation understanding/extraction tasks; modifying existing images is `gen_image` editing. Tool calling and structured responses are **interface tasks** that can overlap with either category; do not treat them as one kind of prompt.
 3. Write observable acceptance criteria: correctness, supporting evidence, completeness, format, visual composition/text fidelity, latency, or cost. Without a baseline, start with a minimal prompt and a few representative samples; do not claim measured improvements.
 
 ## Read on demand, not the entire directory
@@ -27,12 +27,12 @@ Deliver prompts or interface contracts that can be used, checked, and iterated o
 | Providing actual request fields for a platform or discussing migration | [Platform differences](references/engineering/provider-compatibility.md), and check current official documentation |
 | Tracing supporting sources or licenses | [Sources](references/sources.md) |
 
-Reference documents may link to more specific examples; do not read all interface and platform material first when the task only requires a piece of copy.
+Reference documents link to more specific examples; do not read all interface and platform material first when the task only requires a piece of copy.
 
 ## Approach and deliverables
 
 - Establish a baseline with direct, specific instructions and necessary context; add few-shot examples, decomposition, retrieval, tools, or structured constraints only when failure samples show a need. Missing external facts call for better information sources, not repeated declarations of "do not hallucinate." For visual tasks, prioritize details by subject, composition, and purpose rather than requiring every slot to be filled.
-- When comparing approaches, explain each one's applicability, **expected** effects, side effects, and validation method; do not treat observations from one model or benchmark as cross-platform guarantees. Prompts cannot replace backend permission checks, JSON Schema validation, fact-checking, or human image acceptance.
+- When comparing approaches, explain each one's applicability, **expected** effects, side effects, and validation method; do not generalize single-model or single-benchmark observations across platforms. Prompts cannot replace backend permission checks, JSON Schema validation, fact-checking, or human image acceptance.
 - Default deliverables: a copyable prompt/contract, boundaries for variables and example inputs, key choices and rejected alternatives, acceptance samples, and unverified items. If the user only wants a review, provide findings and suggested changes only; if they only want one prompt, reduce explanation and process.
 - When the user requests executable API examples, confirm the service, API type, model, and SDK version; do not combine OpenAI, Claude, and Gemini parameter names into a "universal request" or present a tool schema as a final-answer schema.
 

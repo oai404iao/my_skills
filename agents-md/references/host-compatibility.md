@@ -1,6 +1,6 @@
 # Host Compatibility
 
-Use this reference when discovery, inheritance, or sharing files affects the result. This is a documentation snapshot, not a promise about every installed version. Recheck the target host, launch directory, trust settings, and configuration; verification dates and sources are recorded in [Sources](sources.md).
+Use this reference when discovery, inheritance, or sharing files affects the result. Verify the target host version, launch directory, trust settings, and configuration; verification dates and sources are recorded in [Sources](sources.md).
 
 ## Format Is Not a Loader
 
@@ -15,7 +15,7 @@ The [official discovery guide](https://learn.chatgpt.com/docs/agent-configuratio
 - Startup discovery: global guidance under `CODEX_HOME` (default `~/.codex`), then the project-root-to-current-directory chain. Globally, AGENTS.override.md is preferred over AGENTS.md; only the first nonempty file is used.
 - At each project directory: `AGENTS.override.md`, then `AGENTS.md`, then configured `project_doc_fallback_filenames`; at most one instruction file is selected per directory. Empty files are skipped.
 - Root-to-current-directory concatenation, with more local guidance later. Do not describe an override as additive to the same directory's AGENTS.md.
-- A default `project_doc_max_bytes` of 32 KiB. Treat the active project chain as budgeted; splitting files does not by itself guarantee all their content loads.
+- A default `project_doc_max_bytes` of 32 KiB. Treat the active project chain as budgeted; splitting files shares this budget and can still truncate.
 
 The [advanced configuration page](https://learn.chatgpt.com/docs/config-file/config-advanced#project-instructions-discovery) calls the byte limit per-file, while the guide describes combined size. The [pinned loader implementation](https://github.com/openai/codex/blob/c3d3b142d10f4316b46e35aad7e5317e7e506cb7/codex-rs/core/src/agents_md.rs) uses a shared remaining project-document budget and truncates oversized content. For size-dependent work, verify the installed implementation rather than assuming the wording mismatch is resolved for all versions.
 
@@ -42,7 +42,7 @@ Preserve a working setup unless migration is requested:
 | AGENTS.md directly | Target hosts actually discover it | Claude version, feature availability, and competing files/settings |
 | CLAUDE.md imports `@AGENTS.md` | Claude needs an adapter or its own small additions | Keep both files adjacent; check existing content and import resolution |
 | CLAUDE.md symlinks to AGENTS.md | No Claude-only content and the checkout supports symlinks | Windows/Git behavior; edit the target, not an independent copy |
-| Conditional Markdown reference | Detailed material is relevant only to some tasks | State when to read it; do not call it guaranteed eager loading |
+| Conditional Markdown reference | Detailed material is relevant only to some tasks | State when to read it; Markdown links are not eagerly loaded |
 
 The import and symlink choices are supported in [Claude's sharing guidance](https://code.claude.com/docs/en/memory#share-one-file-with-other-coding-tools). Prefer an import over a symlink for Windows consumers; Claude's Edit/Write tools refuse writes through a symlink. Do not replace an existing CLAUDE.md with a one-line adapter without preserving its distinct guidance.
 

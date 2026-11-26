@@ -51,7 +51,7 @@ npx skills add oai404iao/my_skills --skill paseo-pi-team
 
 `{{...}}` 替换为本次任务信息。在仓库根目录运行 `pi --skill ./paseo-pi-team`，可仅向该次 Pi 会话提供本地未发布版本，不修改全局配置；随后仍需显式调用。实际执行需当前会话可用的 Paseo 原生能力，普通独立 Pi 会话不一定具备。
 
-该字段的行为以 [Pi 官方 Skills 文档](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/skills.md) 为依据；不保证其他宿主支持同样的自动加载限制。详见 [来源与验证边界](paseo-pi-team/references/sources.md)。
+该字段的行为以 [Pi 官方 Skills 文档](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/skills.md) 为依据；未验证其他宿主是否支持同样的自动加载限制。详见 [来源与验证边界](paseo-pi-team/references/sources.md)。
 
 ## 仓库结构
 
@@ -124,6 +124,7 @@ my_skills/
 │       │   ├── tool-schema.md
 │       │   └── structured-output.md
 │       ├── engineering/
+│       │   ├── anti-patterns.md
 │       │   ├── evaluation.md
 │       │   └── provider-compatibility.md
 │       └── sources.md
@@ -145,7 +146,7 @@ my_skills/
 
 `clean-defensive-wording` 收录自本机 `~/.agents/skills/clean-defensive-wording/SKILL.md`，保留核心原则、中英文扫描模式与改写对照。本地来源未附带许可证声明。
 
-`frontend-design` 当前完整迁入 `Ikaleio/skills` 的 `ikadesign3`（固定提交 `5276d6e`），保留其强制 design.md 前置、测量记录、规则标签、实现绑定和单次复查流程；适配技能名称与来源引用，并按用户要求加入少用口径、脚注和底部说明的文案约束。上游检查规则的已知冲突原样保留并另行记录。此前 Anthropic 版本的来源也保留在 [来源说明](frontend-design/references/sources.md)；来源仅供追溯，不代表再分发许可、统一授权或上游背书。
+`frontend-design` 当前完整迁入 `Ikaleio/skills` 的 `ikadesign3`（固定提交 `5276d6e`），保留其强制 design.md 前置、测量记录、规则标签、实现绑定和单次复查流程；适配技能名称与来源引用，并按用户要求加入少用口径、脚注和底部说明的文案约束。上游检查规则的已知冲突原样保留并另行记录。此前 Anthropic 版本的来源也保留在 [来源说明](frontend-design/references/sources.md)；来源仅用于追溯，不含再分发许可或统一授权。
 
 `development-workflow`（原 `git-branch-development-workflow`）由本机原有 skill 调整而来：默认改为分支开发而非 worktree、默认只推送集成分支、合并后同步清理本地与远端开发分支，并新增按社区实践（SemVer、Conventional Commits、Keep a Changelog、release-please/semantic-release/changesets）整理的版本发布指引。原有 worktree 参考文档保留为按需读取的隔离方案。本地来源未附带许可证声明。
 
@@ -153,7 +154,7 @@ my_skills/
 
 `global-memory` 参考 `hc-bot` 的 `router-memory` 检索模式独立编写，提供跨工具共享记忆目录 `~/.agents/memory/` 的检索脚本与结构说明（见 [memory-layout.md](global-memory/references/memory-layout.md)），不包含本机私有记忆条目。
 
-`llm-prompt-design` 依据 OpenAI、Anthropic、Google 示例及 DAIR.AI 资料独立编写；采用主题、来源及许可说明见 [来源说明](llm-prompt-design/references/sources.md)。图像提示词七槽位公式来自本仓库维护任务，不作为第三方标准。
+`llm-prompt-design` 依据 OpenAI、Anthropic、Google 示例及 DAIR.AI 资料独立编写；采用主题、来源及许可说明见 [来源说明](llm-prompt-design/references/sources.md)。图像提示词七槽位公式为本仓库自拟结构，非第三方标准。
 
 `paseo-pi-team` 由用户提供的双层 Agent 团队 prompt 整理而来，参考 Agent Skills 官方规范、编写教程及 Pi 的显式调用机制；保留原生 workspace、监督 heartbeat、授权和交付边界。未附带自动化脚本，不会因安装而自动启动团队；来源和未实测范围见 [来源说明](paseo-pi-team/references/sources.md)。
 

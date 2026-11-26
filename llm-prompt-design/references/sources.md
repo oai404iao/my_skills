@@ -1,6 +1,6 @@
 # Sources and scope of rewriting
 
-This skill **independently organizes rules and original examples** based on the sources below; it is not a copy or complete translation of any upstream guide. Shared terms (zero-shot, few-shot, tool schema, JSON Schema) refer to common concepts, not upstream endorsement. If external text, examples, or images are directly quoted or copied in the future, check the specific file version, license, and attribution; do not infer from this page that every page uses the same license.
+This skill **independently organizes rules and original examples** based on the sources below; it is not a copy or complete translation of any upstream guide. Shared terms (zero-shot, few-shot, tool schema, JSON Schema) refer to common concepts. If external text, examples, or images are directly quoted or copied in the future, check the specific file version, license, and attribution; do not infer from this page that every page uses the same license.
 
 ## Main sources supplied by the user
 
@@ -19,4 +19,4 @@ The **repository-level** licenses of the two GitHub repositories above are [Goog
 - [Anthropic Define tools](https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools), [Structured outputs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs).
 - [Gemini Function calling](https://ai.google.dev/gemini-api/docs/function-calling), [Structured output](https://ai.google.dev/gemini-api/docs/structured-output), [Image generation](https://ai.google.dev/gemini-api/docs/image-generation), [API migration](https://ai.google.dev/gemini-api/docs/migrate-to-interactions).
 
-Actual parameter names and support for tools/outputs change; the API types used in examples are identified in [Platform differences](engineering/provider-compatibility.md). Check official documentation again for actual integrations. The seven-slot `gen_image` formula comes from an example supplied by the user for this task, locally organized into optional items; it is not misrepresented as an upstream specification.
+Actual parameter names and support for tools/outputs change; the API types used in examples are identified in [Platform differences](engineering/provider-compatibility.md). Check official documentation again for actual integrations. The seven-slot `gen_image` formula comes from an example supplied by the user for this task, locally organized into optional items; it is a local organizational tool rather than an upstream specification.

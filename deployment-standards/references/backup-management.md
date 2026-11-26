@@ -2,7 +2,7 @@
 
 Read when creating, locating, reviewing, retaining, or restoring deployment backups, including a single configuration file copied before an edit. This reference governs storage and lifecycle; use [Release and recovery](release-and-recovery.md#backup-contract) for capture consistency and engine-specific procedures.
 
-These are this skill's baseline conventions, not a universal Linux standard or proof of an existing project's policy. Use an established, protected backup root when confirmed; record its mapping to the roles below rather than creating a competing hierarchy. Examples contain placeholders, not commands or authorized resources.
+These are baseline conventions; use an established, protected backup root when confirmed and record its mapping to the roles below rather than creating a competing hierarchy. Examples contain placeholders, not authorized resources or commands to run.
 
 ## Choose the Destination Before Writing
 

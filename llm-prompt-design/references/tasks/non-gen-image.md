@@ -1,6 +1,6 @@
 # Non-`gen_image`: Reusable examples by task
 
-The examples on this page are original **illustrative inputs**, not prompts measured to be optimal. For image OCR/visual question answering without image generation, also use extraction/question-answering approaches with the image as input. Read [Strategy selection](../strategy-selection.md) first; for machine-readable output, read [Structured responses](../interfaces/structured-output.md); for calling business tools, read [Tool contracts](../interfaces/tool-schema.md).
+The examples on this page are **illustrative starting points**, not benchmarked prompts. For image OCR/visual question answering without image generation, also use extraction/question-answering approaches with the image as input. Read [Strategy selection](../strategy-selection.md) first; for machine-readable output, read [Structured responses](../interfaces/structured-output.md); for calling business tools, read [Tool contracts](../interfaces/tool-schema.md).
 
 ## 1. Classification: From vague intent to explicit decisions
 

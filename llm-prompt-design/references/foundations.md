@@ -23,7 +23,7 @@ If downstream code parses a fixed object, use [Structured responses](interfaces/
 
 ## Examples and complexity
 
-Start with a zero-shot trial. If classification boundaries are unstable or a style must be imitated, add a few **correct** examples covering normal cases, similar categories, and missing information. Examples must not conflict, and production prompts must not include real credentials or sensitive samples. State that examples are input/output pairs to imitate, not new user requests. More examples consume more context and may encourage mechanical imitation.
+Start with a zero-shot trial. If classification boundaries are unstable or a style must be imitated, add a few **correct** examples covering normal cases, similar categories, and missing information. Examples must not conflict, and production prompts must not include real credentials or sensitive samples. State that examples are input/output pairs to imitate, not new user requests. More examples consume more context and can encourage mechanical imitation.
 
 For long-material tasks, test material placement for the model and invocation method, preserving boundaries between excerpt IDs/sources and the query; first reduce irrelevant excerpts rather than treating "fill the context" as RAG. Decompose complex tasks only when intermediate results can be checked independently; request brief, verifiable conclusions or verification items, not mandatory disclosure of private reasoning. Prefer configuration actually supported by the target API for image parameters (dimensions, transparent background, etc.), tool selection, and strict JSON output, rather than simulating them only in prose.
 

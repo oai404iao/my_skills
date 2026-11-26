@@ -16,7 +16,7 @@ First fix the model/API, input set, tool permissions, image references, sampling
 | Tool calling | Accuracy of calling/not calling, valid arguments, authorization before writes, failure recovery | Overlapping descriptions, missing arguments, server-side validation and error semantics |
 | Image generation/editing | Subject and count, composition whitespace, exact text accuracy, identity/local preservation, human usability rate | Whether references were actually supplied, parameter support, content/composition conflicts |
 
-Record comparisons as: `task/sample version → prompt/schema version → model and settings → result → failure type → next single-variable change`. Batch evaluation is not a prerequisite for ordinary one-off creation; with only one sample, perform targeted checks rather than claiming statistical significance. Visual images often require blind human review and item-by-item checks; image API output parameters may be more effective than adding adjectives. After deployment, if allowed, monitor input-distribution changes and regressions from model/API upgrades.
+Record comparisons as: `task/sample version → prompt/schema version → model and settings → result → failure type → next single-variable change`. Batch evaluation is not a prerequisite for ordinary one-off creation; with only one sample, perform targeted checks rather than claiming statistical significance. Visual images often require blind human review and item-by-item checks; image API output parameters are often more effective than adding adjectives. After deployment, if allowed, monitor input-distribution changes and regressions from model/API upgrades.
 
 ## What tests prove
 
@@ -24,4 +24,4 @@ Distinguish template rendering, parsing/schema, local business logic, and real m
 
 For wording lock-in, contradictory fake responses, and the boundaries of valid tests, see [Common anti-patterns and counterexamples](anti-patterns.md). Do not delete all snapshot or fake tests because brittle assertions were found, and do not create mirror-text tests for wording-only changes.
 
-See [Anthropic's evaluation-first guidance](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview), [OpenAI prompt engineering](https://developers.openai.com/api/docs/guides/prompt-engineering), and [OpenAI image-prompt checking guidance](https://developers.openai.com/api/docs/guides/image-prompting). Task samples and metrics are this skill's engineering synthesis, not results of experiments already run.
+See [Anthropic's evaluation-first guidance](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview), [OpenAI prompt engineering](https://developers.openai.com/api/docs/guides/prompt-engineering), and [OpenAI image-prompt checking guidance](https://developers.openai.com/api/docs/guides/image-prompting). Task samples and metrics are unbenchmarked engineering guidelines.

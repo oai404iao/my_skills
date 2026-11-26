@@ -23,7 +23,7 @@ Official repository `main` snapshots inspected on 2026-10-12:
 - Bruno: [`8833538ce20548f26b88079ce701095e7b06f682`](https://github.com/usebruno/bruno/tree/8833538ce20548f26b88079ce701095e7b06f682)
 - Bruno docs: [`3381866fc132a9a2a2aaf18c86bac3ec947e8530`](https://github.com/usebruno/bruno-docs/tree/3381866fc132a9a2a2aaf18c86bac3ec947e8530)
 
-These SHAs record research evidence; they are not required installation versions. Package versions in source manifests do not establish the latest npm release. Do not infer app, CLI, or language-package versions from each other. Use the project's pinned version and the installed CLI's help.
+These SHAs record the inspected commits, not required installation versions. Do not infer app, CLI, or language-package versions from each other; use the project's pinned version and the installed CLI's help.
 
 Paths below are relative to the Bruno source root. Start here when updating the references:
 
@@ -46,11 +46,11 @@ Paths below are relative to the Bruno source root. Start here when updating the 
 
 - The Bru tag-reference test example uses `body:test`, but the snapshot parser registers `tests`. This skill follows the parser and actual request examples rather than copying that example.
 - The YAML overview claims `.bru` and `.yml` can coexist, whereas the migration page explicitly prohibits mixed formats within a collection. This skill does not claim to resolve that upstream contradiction. It conservatively preserves the existing single format without automatic mixing or migration.
-- CLI documentation includes options not registered by the snapshot's `run` builder, such as some parallel/data-iteration options. A website capability list is not a guarantee for every installed CLI.
+- CLI documentation includes options not registered by the snapshot's `run` builder, such as some parallel/data-iteration options. Check `--help` on the installed CLI rather than assuming every documented option is present.
 - `--tests-only` is the snapshot's option name. An older changelog uses singular `--test-only`; that does not establish a supported alias in the current CLI.
-- Static source inspection and example parsing are not desktop loading tests or live CLI execution tests. Do not claim end-to-end verification without actually running a collection, import, or GUI operation.
+- Static source inspection and example parsing do not verify desktop loading or live CLI execution; report only the operations actually run.
 
-During this skill's initial authoring, the 11 Bru / JSON / YAML examples in `file-format.md` were parsed offline: Bru used the snapshot's request, collection, and environment parsers; JSON used standard parsing; YAML was checked for syntax only. No HTTP requests were sent, and no real collection, import, or desktop session was run. This does not establish full schema, script, or API compatibility with a target version.
+During this skill's initial authoring, the 11 Bru / JSON / YAML examples in `file-format.md` were parsed offline: Bru used the snapshot's request, collection, and environment parsers; JSON used standard parsing; YAML was checked for syntax only. No HTTP requests were sent, and no real collection, import, or desktop session was run. Full schema, script, and API compatibility with a specific target version were not tested.
 
 ## Provenance and Licensing
 

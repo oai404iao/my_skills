@@ -1,6 +1,6 @@
 # Repository Patterns
 
-Use these examples to select an organization pattern, not to import another project's policies. Examined on **2026-10-10**; links pin the inspected commits. The selection spans established coding-agent, editor, packaging, and monorepo projects. It is not a popularity ranking or evidence that every instruction in those repositories is good.
+Use these examples to select an organization pattern, not to import another project's policies. Examined on **2026-10-10**; links pin the inspected commits across established coding-agent, editor, packaging, and monorepo projects.
 
 ## Observed Patterns and Transferable Choices
 

@@ -12,7 +12,7 @@ When downstream consumers need stable fields, prefer structured output supported
 
 `description` is model-visible generation guidance, not a developer-notes field. Retain field semantics, sources, missing-value rules, and necessary length suggestions; implementation notes such as "this length is only generation guidance, not a validation condition" belong in developer documentation, while actual constraints come from schema keywords and local validation. Do not force these explanatory sentences to appear through tests. See [Common anti-patterns](../engineering/anti-patterns.md) for related counterexamples and contract-conflict diagnosis.
 
-These trade-offs summarize routing and draft schemas, accompanying prompts, and schema-compatibility checks from an actual service: routing can require only a decision enum and omit unprovided conditional fields; fixed-field drafts require a single type per field, agreed values for empty fields, and checks before business processing. These are **optional designs**, not imports of that service's private business fields into this skill. Compare structural compliance and incorrectly filled fields on real model samples to evaluate the patterns.
+These trade-offs summarize routing and draft schemas, accompanying prompts, and schema-compatibility checks from an actual service: routing can require only a decision enum and omit unprovided conditional fields; fixed-field drafts require a single type per field, agreed values for empty fields, and checks before business processing. These are **optional patterns**, not fixed business schemas. Compare structural compliance and incorrectly filled fields on real model samples to evaluate the patterns.
 
 ## Complete example: Ticket extraction and classification
 

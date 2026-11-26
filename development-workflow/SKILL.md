@@ -1,13 +1,13 @@
 ---
 name: development-workflow
-description: Git development workflow guidelines covering branches, commits, testing and verification, merging and cleanup, and version releases. Use when making changes in a Git repository - creating branches, writing Conventional Commits, deciding what to verify before merging, squash merging back to the integration branch, cleaning up branches and worktrees, or bumping versions, tagging releases, and updating a changelog. Read the worktree reference as needed when the user requests isolated parallel development.
+description: Git development workflow guidelines covering branches, commits, testing and verification, merging and cleanup, and version releases. Use when making changes in a Git repository - creating branches, writing Conventional Commits, deciding what to verify before merging, squash merging back to the integration branch, cleaning up branches and worktrees, or bumping versions, tagging releases, and updating a changelog. Read the worktree reference as needed when the user requests isolated parallel development. Not for read-only inspection, code explanation, or repository-free tasks.
 ---
 
 # Development Workflow Guide
 
 When making feature, fix, documentation, refactoring, test, or maintenance changes in a Git repository, normally follow: **develop on a branch → verify → Squash Merge back to the integration branch → clean up → release a version when needed**. Simple, low-risk edits may instead use the direct-commit path below, without creating or merging a branch.
 
-This is the default workflow, not a rigid restriction that blocks development. The project's existing `AGENTS.md`, `CONTRIBUTING.md`, branch protection rules, and team conventions take precedence. If the user explicitly asks to work on the current branch, the project is unsuitable for branching, or the environment is restricted, continue completing the request, but explain any deviations.
+The project's existing `AGENTS.md`, `CONTRIBUTING.md`, branch protection rules, and team conventions take precedence. If the user explicitly asks to work on the current branch, the project is unsuitable for branching, or the environment is restricted, continue completing the request, but explain any deviations.
 
 ## Default Conventions
 
@@ -107,7 +107,7 @@ First confirm that the squash commit has reached the integration branch, then cl
 
 ```bash
 git worktree remove <worktree-path>              # If a worktree was used, remove its directory first
-git branch -D <development-branch>               # Squashing changes hashes, so -d usually refuses
+git branch -D <development-branch>               # Squashing changes hashes, so -d refuses
 git push <remote> --delete <development-branch>  # Clean up only branches that were pushed
 ```
 

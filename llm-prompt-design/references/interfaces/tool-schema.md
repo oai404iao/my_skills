@@ -46,7 +46,7 @@ OpenAI strict function mode requires `additionalProperties: false` on every obje
 
 ## Optional parameters: Do not confuse omission with fixed keys
 
-Two alternatives can be distilled from existing business-schema practice (neither is a mandatory format for a particular project):
+Two common patterns for optional parameters:
 
 - **The target interface allows non-required parameters:** For example, fill a search tool's `status` only when the user explicitly specifies it; retain `type: "string"` and `enum: ["pending", "done"]`, but do not put `status` in `required`. State "omission means no status filter" in the description; the tool executor must also distinguish missing keys from invalid values. Optionality does not always require `null`, multiple types, or large branching schemas.
 - **Fixed keys are required and the business allows empty values:** Keep `status` as a string and include it in `required`, with `enum: ["", "pending", "done"]`; descriptions and calling instructions state "pass `""` when status is unspecified," and the executor filters this sentinel. This only works when `""` cannot be a real status; a numeric parameter's `0` likewise requires proof it does not conflict with a valid 0. Do not use this to bypass genuinely required parameters such as order numbers or amounts.
@@ -80,7 +80,7 @@ If switched to OpenAI `strict: true`, this schema is rejected because `status` i
 | --- | --- | --- |
 | Read-only live status query | Identifier source, data freshness, not-found semantics; ask first if ID is missing | Avoid answering from stale memory; add call latency |
 | Similar tools (order search / exact order lookup) | Separate triggers and return scopes for fuzzy search and exact reading | Reduce wrong-tool selection; still test ambiguous requests |
-| Create, send, delete | Side effects, prerequisites, confirmed authorization scope, retry semantics; executor checks authorization again | Reduce accidental-operation risk, but schemas **cannot** guarantee non-execution |
+| Create, send, delete | Side effects, prerequisites, confirmed authorization scope, retry semantics; executor checks authorization again | Reduce accidental-operation risk; schemas alone do not prevent execution |
 | Multi-parameter search | Types, units, ranges, enums, filter-combination semantics | Reduce fabricated parameters; increase complexity and token costs |
 
 **Platform differences:** Anthropic custom tools use `name`, `description`, and `input_schema`, with `strict` / `input_examples` where supported; Gemini function-declaration wrappers and schema capabilities depend on the API used. Do not send the OpenAI definition above directly to other providers. See [Platform differences](../engineering/provider-compatibility.md), [Anthropic define tools](https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools), and [Gemini function calling](https://ai.google.dev/gemini-api/docs/function-calling).

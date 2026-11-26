@@ -1,6 +1,6 @@
 # Review Scenarios
 
-Use these cases for a full review or redesign; choose only relevant cases for a targeted update. They define expected behavior, not evidence that any model has already passed.
+Use these cases for a full review or redesign; choose only relevant cases for a targeted update.
 
 ## Document Integrity
 

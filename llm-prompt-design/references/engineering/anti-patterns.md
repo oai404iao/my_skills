@@ -1,6 +1,6 @@
 # Common anti-patterns in prompts, schemas, and tests
 
-The following are illustrative counterexamples distilled from code-review issues, not measured model results. They distinguish generation guidance, interface contracts, and effectiveness validation without categorically condemning wording or testing tools. Review tasks only report issues; changes must stay within the authorized scope, especially without unilaterally changing business inference rules.
+The following are illustrative counterexamples from code reviews, not benchmark measurements. They distinguish generation guidance, interface contracts, and effectiveness validation without categorically condemning wording or testing tools. Review tasks only report issues; changes must stay within the authorized scope, especially without unilaterally changing business inference rules.
 
 ## 1. Addressing the wrong audience: Developer notes written to the model
 
@@ -30,7 +30,7 @@ assert "reduce the font size" in prompt
 
 Then name the tests "the model will not invent dates" or "the poster meets readability requirements."
 
-**Problem:** Opposite instructions can contain the same words: both "Do not reduce the font size" and "Please reduce the font size" pass the second assertion; equivalent rewordings may fail. These tests constrain the author's wording without validating model behavior.
+**Problem:** Opposite instructions can contain the same words: both "Do not reduce the font size" and "Please reduce the font size" pass the second assertion; equivalent rewordings fail. These tests constrain the author's wording without validating model behavior.
 
 **Fix:** Template tests check interpolation and message roles; semantic requirements need evaluation on representative inputs/outputs. For example, when no date is provided, check whether the model keeps it unknown; poster readability requires checking actual generated results. Without running a model, explicitly state that semantic effects are unverified rather than substituting keyword assertions.
 
@@ -59,7 +59,7 @@ Fake LLM: Two offline devices were found; three services were completed this per
 Test: Checks only that the page contains "No records"; passes.
 ```
 
-**Problem:** The page may display both an empty-data notice and fabricated conclusions. Contradictory test data hides defects; one shared "successful answer" does not suit every scenario.
+**Problem:** The page can display both an empty-data notice and fabricated conclusions. Contradictory test data hides defects; one shared "successful answer" does not suit every scenario.
 
 **Fix:** Ordinary workflow tests use scenario-consistent fakes and check the factual data sent to the model and actual rendered results. If deliberately injecting an incorrect model answer, make it a negative case and explain whether it tests rejection, fallback, or a currently unprotected boundary—not a normal success path. Fakes can prove orchestration behavior, not that real models remain factually consistent.
 
@@ -90,7 +90,7 @@ Another common example: rules require omitting missing fields, but examples outp
 - "Regardless of how much material exists, always provide five issues and five recommendations."
 - "You must mention a particular risk category and give a handling frequency."
 
-**Problem:** The model may state guesses as facts, manufacture issues to meet quotas, or offer inapplicable recommendations. "Specific" is not factual evidence, and stronger wording cannot supply missing information.
+**Problem:** The model can state guesses as facts, manufacture issues to meet quotas, or offer inapplicable recommendations. "Specific" is not factual evidence, and stronger wording cannot supply missing information.
 
 **Fix:** Extraction tasks preserve unknowns; recommendation tasks first confirm whether the business authorizes inference and clearly distinguish known facts from suggested values. Allow fewer items when supported and empty arrays when no additional recommendations exist; necessary fixed output sizes require a defined way to express insufficient evidence, not invented filler.
 

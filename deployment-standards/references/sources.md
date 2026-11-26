@@ -16,25 +16,25 @@ These are provenance labels, not required files in an installed skill. The origi
 
 ## Public Backup Practices
 
-The backup-management addition independently synthesizes these primary sources. Public documentation is evidence, not authorization to run its examples or an endorsement of our chosen paths.
+The backup-management addition independently synthesizes these primary sources. Public documentation is reference material, not authorization to run its examples.
 
 | Source | Adopted principle and limits |
 | --- | --- |
-| [FHS 3.0: `/var` hierarchy](https://refspecs.linuxfoundation.org/FHS_3.0/fhs/ch05.html) | Separates mutable state from configuration/code; it does not mandate our `/var/backups` tree |
+| [FHS 3.0: `/var` hierarchy](https://refspecs.linuxfoundation.org/FHS_3.0/fhs/ch05.html) | Separates mutable state from configuration/code; does not mandate our `/var/backups` tree |
 | [Borg: central repository server](https://borgbackup.readthedocs.io/en/stable/deployment/central-backup-server.html) | Central storage with per-client namespace/access restrictions; its account/HOME paths and Ansible/Salt setup are examples, not our required deployment |
-| [Borg: quick start](https://borgbackup.readthedocs.io/en/stable/quickstart.html) | Capture consistency, capacity, key recovery, and tiered retention; the 7 daily / 4 weekly / 6 monthly example is a starting point, not a workload-independent guarantee |
+| [Borg: quick start](https://borgbackup.readthedocs.io/en/stable/quickstart.html) | Capture consistency, capacity, key recovery, and tiered retention; the 7 daily / 4 weekly / 6 monthly example is a starting point to adjust to the workload |
 | [restic: repository preparation](https://restic.readthedocs.io/en/stable/030_preparing_a_new_repo.html) | Managed repositories can use local or remote backends; password recovery and repository identity matter; no mandatory tool/vendor adoption |
 | [restic: snapshot removal](https://restic.readthedocs.io/en/stable/060_forget.html) | Scoped retention, deletion previews, native maintenance, and append-only retention attack caveats; validate semantics against the installed tool/backend |
 | [CISA: StopRansomware guide](https://www.cisa.gov/stopransomware/ransomware-guide) | Offline encrypted backups and actual recovery exercises; path selection alone does not protect against ransomware |
-| [CISA and partner agencies: LockBit advisory, mitigation section](https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-165a) | 3-2-1 and physically separate, segmented recovery copies; not proof that a specific host meets these goals |
+| [CISA and partner agencies: LockBit advisory, mitigation section](https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-165a) | 3-2-1 and physically separate, segmented recovery copies; does not establish that a specific host meets these goals |
 
 Our exact `/var/backups/<scope>/<environment>/{pre-change,staging}/<backup-id>/` layout, backup-server `/srv/backups/...` example, set/manifest conventions, prohibition on scattered agent-created copies, and proposed pre-change retention floor are local baseline design choices. Existing protected project contracts take precedence; exceptions and recovery gaps must be explicit.
 
-No third-party documentation text or example scripts are bundled by this addition, and it does not extend a third party's license to the original private archive.
+No third-party documentation text or example scripts are bundled by this addition.
 
 ## User Services and XDG Sources
 
-The user-service profile is an independent synthesis of the following primary documentation. The XDG source is specification 0.8. The systemd manual sources below are pinned to **v257** for reproducible semantics, not a required minimum or a claim that v257 is the latest release. Validate availability, distribution policy, and actual behavior against the target host's installed systemd, kernel, session setup, and applications. The official rendered manual site was unavailable during research; the links point to upstream's manual sources.
+The user-service profile is an independent synthesis of the following primary documentation. The XDG source is specification 0.8. The systemd manual sources below are pinned to **v257** for reproducible semantics; validate availability, distribution policy, and actual behavior against the target host's installed systemd, kernel, session setup, and applications. The official rendered manual site was unavailable during research; the links point to upstream's manual sources.
 
 | Source | Adopted principle and limits |
 | --- | --- |
@@ -48,16 +48,14 @@ The user-service profile is an independent synthesis of the following primary do
 | [systemd manager D-Bus interface, v257](https://github.com/systemd/systemd/blob/v257/man/org.freedesktop.systemd1.xml) | The running manager's `UnitPath` property exposes its active unit search paths, distinct from a client process's environment |
 | [environment.d, v257](https://github.com/systemd/systemd/blob/v257/man/environment.d.xml) | Environment passed to user-manager children, not a universal mechanism to change the manager's own startup environment |
 
-Our ownership-profile selection, release subdirectories, user backup root, stricter failure on an unavailable runtime root, and acceptance checklist are recommended baseline choices, not requirements imposed by XDG or systemd. Same-UID file modes do not establish independent deployment or backup authority. No third-party manual text or scripts are copied; factual synthesis and the illustrative unit do not imply upstream endorsement or a license grant over unrelated source material.
+Our ownership-profile selection, release subdirectories, user backup root, stricter failure on an unavailable runtime root, and acceptance checklist are baseline design choices, not requirements imposed by XDG or systemd. Same-UID file modes do not establish independent deployment or backup authority. No third-party manual text or scripts are copied.
 
 ## Deliberate Exclusions
 
 - Fixed OS versions, IPs, administrator names/UIDs, SSH settings, and a temporary decision not to configure a firewall are project decisions, not general deployment standards.
 - Rehearsal-only networking, proxying, unavailable upstreams, and disabled consumers are not production defaults.
 - Legacy Supervisor retention, privileged security tasks, and GPU/device access illustrate documented exceptions, not universal prescriptions.
-- Historical migration targets, recorded production state, and rehearsal results are distinct evidence types; none proves current host state.
+- Historical migration targets, recorded production state, and rehearsal results are distinct evidence types; none establishes current host state.
 - Example paths are baseline design choices. Existing confirmed project contracts take precedence.
 
-No third-party license grant was supplied for the local archive; do not infer one or extend it to unrelated material. This skill makes no claim of official systemd, Docker, database-vendor, or agent-host endorsement.
-
-Validation of this skill is static unless separately reported otherwise. Its wording does not establish successful host discovery, model compliance, production restart, business acceptance, or recovery testing.
+No third-party license grant was supplied for the local archive.

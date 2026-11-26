@@ -115,7 +115,7 @@ git push -u <remote> <development-branch>
 gh pr merge --squash
 ```
 
-It is recommended to turn off the platform's "automatically delete branches after merging" setting: it deletes remote branches before local cleanup, which can easily leave a series of local branch references that cannot be deleted.
+Turn off the platform's "automatically delete branches after merging" setting: it deletes remote branches before local cleanup, leaving local branches that cannot be deleted.
 
 **Local Squash Merge path**: Operate in the main working tree; the integration branch's workspace must be clean.
 

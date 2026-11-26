@@ -1,6 +1,6 @@
 # Bruno File Formats
 
-Read this reference before editing. The following primarily covers HTTP `.bru` collections; handle YAML collections as described in the final section. These are independently written format examples, not target-project paths, API contracts, or authorization to execute.
+Read this reference before editing. The following primarily covers HTTP `.bru` collections; handle YAML collections as described in the final section. Replace placeholder paths and contracts with the target project's values.
 
 Implementation references: [Bru parser](https://github.com/usebruno/bruno/blob/8833538ce20548f26b88079ce701095e7b06f682/packages/bruno-lang/v2/src/bruToJson.js), [serializer](https://github.com/usebruno/bruno/blob/8833538ce20548f26b88079ce701095e7b06f682/packages/bruno-lang/v2/src/jsonToBru.js). Official documentation: [language](https://docs.usebruno.com/bru-lang/language), [tags](https://docs.usebruno.com/bru-lang/tag-reference).
 
