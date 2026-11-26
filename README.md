@@ -61,7 +61,7 @@ my_skills/
 ├── AGENTS.md                  # 本仓库维护约定
 ├── prompts/
 │   ├── coding-principles.md   # 可选公共指令，不是可安装的 skill
-│   └── pi-global-agents.md    # pi 与 agy 共用全局指令维护源
+│   └── global-agents.md       # pi 与 agy 共用全局指令维护源
 ├── api-design/
 │   ├── SKILL.md
 │   └── references/
@@ -193,7 +193,7 @@ git diff
 
 ### 跨工具全局指令（pi 与 agy 共用）
 
-[pi-global-agents.md](prompts/pi-global-agents.md) 是 `pi` 与 `agy` 共用全局指令的唯一维护来源（保持文件名以兼容现有同步脚本），
+[global-agents.md](prompts/global-agents.md) 是 `pi` 与 `agy` 共用全局指令的唯一维护来源，
 包含执行规范、工具链默认偏好、测试/文档纪律、去防御性约束与临时目录约定。
 同步部署目标为本机 `~/.config/pi/agent/AGENTS.md`（`pi`）与 `~/.gemini/GEMINI.md`（`agy`）。
 

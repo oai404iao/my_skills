@@ -27,5 +27,5 @@ source: 来源说明
 `my_skills` 仓库本身只维护 `global-memory` 技能与本结构说明，不托管本机 `~/.agents/memory/` 的具体记忆文件（避免跨环境混入本机专属路径）。向其他机器同步时：
 
 1. **同步技能**：在目标机通过 `npx skills add oai404iao/my_skills --skill global-memory` 安装，或将 `my_skills/global-memory/` 复制到目标机 `~/.agents/skills/global-memory/`（确保 `scripts/search.sh` 有可执行权限）。
-2. **同步全局规范**：目标机通过 `chezmoi` 或 `scripts/sync-pi-agents.sh` 获取 `my_skills/prompts/pi-global-agents.md`，部署到 `~/.config/pi/agent/AGENTS.md` 与 `~/.gemini/GEMINI.md`。
+2. **同步全局规范**：目标机通过 `chezmoi` 或 `scripts/sync-pi-agents.sh` 获取 `my_skills/prompts/global-agents.md`，部署到 `~/.config/pi/agent/AGENTS.md` 与 `~/.gemini/GEMINI.md`。
 3. **同步记忆内容**：按需将本机 `~/.agents/memory/` 中的通用主题文件同步到目标机 `~/.agents/memory/`（例如 `rsync -av ~/.agents/memory/ dev:~/.agents/memory/`），并剔除仅适用源机器的条目。
